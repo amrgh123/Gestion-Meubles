@@ -19,6 +19,14 @@ h3 { font-size: 12px; margin: 12px 0 8px; color: #5a6b62; text-transform: upperc
 .stock-row:hover { background: #eef0ea; }
 .stock-row.alerte { background: #fce8e8; border-left-color: #c0392b; }
 .stock-row.alerte .stock-qte { color: #c0392b; font-weight: 700; }
+.stock-row.desactive { cursor: not-allowed; opacity: 0.55; }
+.stock-row.desactive:hover { background: #fce8e8; }
+.stock-row:not(.desactive):hover { background: #e8f0e0; border-left-color: #4a7a4a; }
+.stock-row.ajout-rapide { animation: flash 0.4s; }
+@keyframes flash {
+  0% { background: #c8d9c8; }
+  100% { background: #f9faf7; }
+}
 .stock-name { flex: 1; margin-right: 10px; line-height: 1.3; min-width: 0; }
 .stock-qte { font-size: 15px; font-weight: 700; min-width: 40px; text-align: right; }
 .stock-sub { font-size: 10px; opacity: 0.6; }
@@ -36,11 +44,21 @@ button:disabled { background: #a8b0a5; cursor: not-allowed; }
 button.danger { background: #a12c2c; color: #f5e5e5; }
 button.success { background: #4a7a4a; color: #e8f0e0; }
 button.small { width: auto; padding: 4px 10px; font-size: 10px; }
-button.add-extra { background: #d7deca; color: #293a34; padding: 5px 10px; font-size: 11px; width: auto; }
-button.remove-extra { background: #a12c2c; color: #f5e5e5; padding: 3px 7px; font-size: 10px; width: auto; }
-.extras-list { margin-bottom: 8px; }
-.extra-item { display: grid; grid-template-columns: 2fr 1fr auto; gap: 6px; align-items: center; margin-bottom: 5px; }
-.extra-item select, .extra-item input { padding: 5px 8px; font-size: 12px; }
+
+/* ===== PANIER ===== */
+.panier { background: #f9faf7; border: 1px solid #d7deca; border-radius: 4px; padding: 10px; min-height: 50px; margin-bottom: 10px; }
+.panier-vide { color: #a8b0a5; font-size: 12px; font-style: italic; text-align: center; padding: 8px 0; }
+.panier-item { display: grid; grid-template-columns: 40px 1fr auto auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #e8ebe4; }
+.panier-item:last-child { border-bottom: none; }
+.panier-item img,
+.panier-item .stock-photo-placeholder { width: 32px; height: 32px; margin: 0; }
+.panier-nom { font-size: 12px; line-height: 1.3; }
+.panier-nom small { display: block; color: #5a6b62; font-size: 10px; }
+.panier-qte { display: flex; align-items: center; gap: 3px; }
+.panier-qte button { width: 24px; height: 24px; padding: 0; font-size: 14px; line-height: 1; font-weight: 700; }
+.panier-qte input { width: 44px; text-align: center; padding: 3px; font-size: 12px; font-weight: 700; }
+.panier-btn-x { background: #a12c2c; color: #f5e5e5; width: 26px; height: 26px; padding: 0; font-size: 11px; border-radius: 50%; }
+
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 th, td { padding: 7px; text-align: left; border-bottom: 1px solid #e8ebe4; }
 th { font-weight: 700; color: #293a34; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; background: #f4f5f1; border-bottom: 2px solid #293a34; }
@@ -117,16 +135,19 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
     </div>
     <div class="form-group">
       <label>Date de début</label>
-      <input type="date" id="debut">
+      <input type="date" id="debut" onchange="rafraichirDispoPourPanier()">
     </div>
     <div class="form-group">
       <label>Date de fin</label>
-      <input type="date" id="fin">
+      <input type="date" id="fin" onchange="rafraichirDispoPourPanier()">
     </div>
   </div>
-  <h3>📋 Articles à réserver</h3>
-  <div class="extras-list" id="extrasList"></div>
-  <button class="add-extra" onclick="ajouterArticle()">+ Ajouter un article</button>
+
+  <h3>🛒 Panier</h3>
+  <div id="panier" class="panier">
+    <div class="panier-vide">Cliquez sur un meuble dans la liste du stock pour l'ajouter au panier.</div>
+  </div>
+
   <div style="margin-top:12px;">
     <button id="btnResa" onclick="validerReservation()">Réserver</button>
   </div>
@@ -149,18 +170,27 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 </div>
 
 <script>
-// ✅ URL du déploiement Apps Script configurée
+/* ============================================================
+   CONFIGURATION
+   ============================================================ */
 const API_URL = "https://script.google.com/macros/s/AKfycbxfsCiC0ZwMSvPuWBOZw4QOwhPZmQxVgHngvJN36wEk4ULvKR-K3XsuwNARU8ZNjQmI/exec";
-
-// 📁 Dossier des photos sur GitHub
 const PHOTOS_BASE = "photos/";
 
+/* ============================================================
+   ÉTAT GLOBAL
+   ============================================================ */
 let reservationsCache = [];
 let inventaireCache = [];
 let dispoCache = [];
+let panier = [];
 
+/* ============================================================
+   UTILITAIRES
+   ============================================================ */
 function formatDate(date) {
-  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, '0') + "-" + String(date.getDate()).padStart(2, '0');
+  return date.getFullYear() + "-" +
+         String(date.getMonth() + 1).padStart(2, '0') + "-" +
+         String(date.getDate()).padStart(2, '0');
 }
 function aujourdhui() { return formatDate(new Date()); }
 
@@ -173,6 +203,26 @@ function afficherMessage(texte, type) {
   if (type === 'error') window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+function escapeHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapeJs(s) {
+  return String(s || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n");
+}
+
+/* ============================================================
+   COMMUNICATION API
+   ============================================================ */
 function fetchJSON(url, tentatives) {
   tentatives = tentatives || 3;
   return fetch(url, { redirect: 'follow' })
@@ -210,7 +260,9 @@ function appelAPI(action, methode, data) {
   }
 }
 
-// ========== GESTION DES PHOTOS ==========
+/* ============================================================
+   GESTION DES PHOTOS
+   ============================================================ */
 function urlPhotoThumb(nomImage) {
   if (!nomImage) return "";
   return PHOTOS_BASE + "thumbs/" + nomImage;
@@ -220,6 +272,12 @@ function urlPhotoFull(nomImage) {
   return PHOTOS_BASE + "full/" + nomImage;
 }
 
+const SVG_PLACEHOLDER = 'data:image/svg+xml;utf8,' +
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">' +
+  '<rect width="100%" height="100%" fill="%23e8ebe4"/>' +
+  '<text x="50%" y="50%" font-size="80" text-anchor="middle" dy=".3em" fill="%23a8b0a5">📦</text>' +
+  '</svg>';
+
 function afficherImage(nomImage, designation) {
   if (!nomImage) return;
   const modal = document.getElementById('imageModal');
@@ -227,10 +285,7 @@ function afficherImage(nomImage, designation) {
   const titre = document.getElementById('imageModalTitre');
   img.src = urlPhotoFull(nomImage);
   img.onerror = function() {
-    // Si la version "full" n'existe pas, on tente la miniature
-    this.onerror = function() {
-      this.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="100%" height="100%" fill="%23e8ebe4"/><text x="50%" y="50%" font-size="60" text-anchor="middle" dy=".3em" fill="%23a8b0a5">📦</text></svg>';
-    };
+    this.onerror = function() { this.src = SVG_PLACEHOLDER; };
     this.src = urlPhotoThumb(nomImage);
   };
   titre.textContent = designation || nomImage;
@@ -249,7 +304,9 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') fermerImage();
 });
 
-// ========== STOCK ==========
+/* ============================================================
+   STOCK — affichage avec clic → panier
+   ============================================================ */
 function chargerStock() {
   const debut = document.getElementById('dateVerifDebut').value || aujourdhui();
   const fin = document.getElementById('dateVerifFin').value || aujourdhui();
@@ -262,7 +319,7 @@ function chargerStock() {
       afficherStock();
     })
     .catch(function(err) {
-      el.innerHTML = '<div class="message error">Erreur : ' + err.message + '</div>';
+      el.innerHTML = '<div class="message error">Erreur : ' + escapeHtml(err.message) + '</div>';
     });
 }
 
@@ -273,10 +330,13 @@ function afficherStock() {
   let count = 0;
 
   dispoCache.forEach(function(item) {
-    if (filtre && item.type.toLowerCase().indexOf(filtre) === -1 && item.id.toLowerCase().indexOf(filtre) === -1) return;
+    const typeLower = item.type.toLowerCase();
+    const idLower = item.id.toLowerCase();
+    if (filtre && typeLower.indexOf(filtre) === -1 && idLower.indexOf(filtre) === -1) return;
     count++;
 
-    const cls = item.alerte ? 'stock-row alerte' : 'stock-row';
+    const desactive = item.alerte;
+    const cls = 'stock-row' + (item.alerte ? ' alerte' : '') + (desactive ? ' desactive' : '');
 
     let qteAffichage, sousTitre;
     if (item.invalide) {
@@ -287,26 +347,38 @@ function afficherStock() {
       sousTitre = 'Tout le stock est réservé sur cette période';
     } else {
       qteAffichage = item.disponible;
-      sousTitre = item.id + ' • sur ' + item.total + ' en stock';
+      sousTitre = escapeHtml(item.id) + ' • sur ' + item.total + ' en stock';
     }
 
-    // 📸 Photo ou placeholder
     let photoHtml;
     if (item.nomImage) {
-      photoHtml = '<img class="stock-photo" src="' + urlPhotoThumb(item.nomImage) + '" alt="" loading="lazy" ' +
+      photoHtml = '<img class="stock-photo" src="' + escapeHtml(urlPhotoThumb(item.nomImage)) + '" alt="" loading="lazy" ' +
                   'onerror="this.outerHTML=\'<div class=&quot;stock-photo-placeholder&quot;>📦</div>\'">';
     } else {
       photoHtml = '<div class="stock-photo-placeholder">📦</div>';
     }
 
-    // 🖱️ Clic sur la ligne → agrandir
-    const onclickAttr = item.nomImage
-      ? 'onclick="afficherImage(\'' + item.nomImage.replace(/'/g, "\\'") + '\', \'' + item.type.replace(/'/g, "\\'") + '\')" title="Cliquer pour agrandir la photo"'
-      : '';
+    // ✨ Clic gauche = ajout panier ; clic sur la photo = agrandir
+    let clickAttr = '';
+    let titleAttr = '';
+    if (desactive) {
+      titleAttr = 'title="Indisponible sur cette période"';
+    } else {
+      clickAttr = 'onclick="ajouterAuPanier(\'' + escapeJs(item.id) + '\')"';
+      titleAttr = 'title="Cliquer pour ajouter au panier"';
+    }
 
-    html += '<div class="' + cls + '" ' + onclickAttr + '>';
-    html += photoHtml;
-    html += '<div class="stock-name">' + item.type + '<div class="stock-sub">' + sousTitre + '</div></div>';
+    // Photo cliquable pour agrandir (uniquement si image existe)
+    let photoClickAttr = '';
+    if (item.nomImage) {
+      photoClickAttr = 'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(item.nomImage) + '\', \'' + escapeJs(item.type) + '\')" ' +
+                       'style="cursor:zoom-in;" title="Cliquer pour agrandir"';
+    }
+
+    html += '<div class="' + cls + '" id="stock-row-' + escapeHtml(item.id) + '" ' + clickAttr + ' ' + titleAttr + '>';
+    html += '<span ' + photoClickAttr + '>' + photoHtml + '</span>';
+    html += '<div class="stock-name">' + escapeHtml(item.type) +
+            '<div class="stock-sub">' + sousTitre + '</div></div>';
     html += '<div class="stock-qte">' + qteAffichage + '</div>';
     html += '</div>';
   });
@@ -315,7 +387,9 @@ function afficherStock() {
   el.innerHTML = html;
 }
 
-// ========== INVENTAIRE ==========
+/* ============================================================
+   INVENTAIRE
+   ============================================================ */
 function chargerInventaire() {
   if (inventaireCache.length > 0) return Promise.resolve();
   return appelAPI('inventaire', 'GET').then(function(data) {
@@ -323,36 +397,140 @@ function chargerInventaire() {
   });
 }
 
-// ========== AJOUT D'ARTICLE ==========
-function ajouterArticle() {
-  if (inventaireCache.length === 0) {
-    chargerInventaire().then(function() { ajouterArticle(); });
+/* ============================================================
+   PANIER
+   ============================================================ */
+function ajouterAuPanier(id) {
+  const dispoItem = dispoCache.find(function(d) { return d.id === id; });
+  if (!dispoItem) return;
+  if (dispoItem.alerte) {
+    afficherMessage('❌ Cet article n\'est pas disponible sur la période choisie', 'error');
     return;
   }
-  const list = document.getElementById('extrasList');
-  const div = document.createElement('div');
-  div.className = 'extra-item';
-  let options = '<option value="">-- Choisir un meuble --</option>';
-  inventaireCache.forEach(function(item) {
-    options += '<option value="' + item.id + '">' + item.type + '</option>';
-  });
-  div.innerHTML = '<select class="extra-select">' + options + '</select>' +
-    '<input type="number" class="extra-qte" min="1" value="1" placeholder="Qté">' +
-    '<button class="remove-extra" onclick="this.parentElement.remove()">✕</button>';
-  list.appendChild(div);
+
+  const existant = panier.find(function(p) { return p.id === id; });
+  if (existant) {
+    if (existant.quantite >= dispoItem.disponible) {
+      afficherMessage('⚠️ Quantité maximale atteinte pour « ' + escapeHtml(dispoItem.type) + ' » (' + dispoItem.disponible + ')', 'error');
+      return;
+    }
+    existant.quantite++;
+  } else {
+    panier.push({
+      id: id,
+      type: dispoItem.type,
+      nomImage: dispoItem.nomImage,
+      quantite: 1,
+      maxDispo: dispoItem.disponible
+    });
+  }
+
+  const row = document.getElementById('stock-row-' + id);
+  if (row) {
+    row.classList.add('ajout-rapide');
+    setTimeout(function() { row.classList.remove('ajout-rapide'); }, 400);
+  }
+
+  afficherPanier();
 }
 
-function getArticles() {
-  const articles = [];
-  document.querySelectorAll('.extra-item').forEach(function(div) {
-    const id = div.querySelector('.extra-select').value;
-    const qte = parseInt(div.querySelector('.extra-qte').value) || 0;
-    if (id && qte > 0) articles.push({ id: id, quantite: qte });
-  });
-  return articles;
+function retirerDuPanier(id) {
+  panier = panier.filter(function(p) { return p.id !== id; });
+  afficherPanier();
 }
 
-// ========== VALIDATION RÉSERVATION ==========
+function changerQtePanier(id, delta) {
+  const item = panier.find(function(p) { return p.id === id; });
+  if (!item) return;
+  const nouvelle = item.quantite + delta;
+  if (nouvelle < 1) { retirerDuPanier(id); return; }
+  if (nouvelle > item.maxDispo) {
+    afficherMessage('⚠️ Maximum disponible : ' + item.maxDispo + ' pour « ' + escapeHtml(item.type) + ' »', 'error');
+    return;
+  }
+  item.quantite = nouvelle;
+  afficherPanier();
+}
+
+function setQtePanier(id, valeur) {
+  const item = panier.find(function(p) { return p.id === id; });
+  if (!item) return;
+  let v = parseInt(valeur) || 1;
+  if (v < 1) v = 1;
+  if (v > item.maxDispo) {
+    afficherMessage('⚠️ Maximum disponible : ' + item.maxDispo + ' pour « ' + escapeHtml(item.type) + ' »', 'error');
+    v = item.maxDispo;
+  }
+  item.quantite = v;
+  afficherPanier();
+}
+
+function afficherPanier() {
+  const el = document.getElementById('panier');
+  if (panier.length === 0) {
+    el.innerHTML = '<div class="panier-vide">Cliquez sur un meuble dans la liste du stock pour l\'ajouter au panier.</div>';
+    return;
+  }
+
+  let html = '';
+  panier.forEach(function(item) {
+    let photoHtml;
+    if (item.nomImage) {
+      photoHtml = '<img src="' + escapeHtml(urlPhotoThumb(item.nomImage)) + '" alt="" ' +
+                  'onerror="this.outerHTML=\'<div class=&quot;stock-photo-placeholder&quot;>📦</div>\'">';
+    } else {
+      photoHtml = '<div class="stock-photo-placeholder">📦</div>';
+    }
+
+    html += '<div class="panier-item">';
+    html += photoHtml;
+    html += '<div class="panier-nom">' + escapeHtml(item.type) +
+            '<small>Dispo max : ' + item.maxDispo + '</small></div>';
+    html += '<div class="panier-qte">';
+    html += '<button onclick="changerQtePanier(\'' + escapeJs(item.id) + '\', -1)">−</button>';
+    html += '<input type="number" min="1" max="' + item.maxDispo + '" value="' + item.quantite + '" ' +
+            'onchange="setQtePanier(\'' + escapeJs(item.id) + '\', this.value)">';
+    html += '<button onclick="changerQtePanier(\'' + escapeJs(item.id) + '\', 1)">+</button>';
+    html += '</div>';
+    html += '<button class="panier-btn-x" onclick="retirerDuPanier(\'' + escapeJs(item.id) + '\')" title="Retirer">✕</button>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function rafraichirDispoPourPanier() {
+  if (panier.length === 0) return;
+
+  const debut = document.getElementById('debut').value;
+  const fin = document.getElementById('fin').value;
+  if (!debut || !fin) return;
+
+  const url = API_URL + '?action=disponibilite&debut=' + debut + '&fin=' + fin + '&t=' + Date.now();
+  fetchJSON(url).then(function(data) {
+    const nouvelleDispo = {};
+    data.forEach(function(d) { nouvelleDispo[d.id] = d; });
+
+    const nouveaux = [];
+    let avertissement = false;
+    panier.forEach(function(p) {
+      const nd = nouvelleDispo[p.id];
+      if (!nd || nd.alerte) { avertissement = true; return; }
+      p.maxDispo = nd.disponible;
+      if (p.quantite > nd.disponible) {
+        p.quantite = nd.disponible;
+        avertissement = true;
+      }
+      nouveaux.push(p);
+    });
+    panier = nouveaux;
+    if (avertissement) afficherMessage('⚠️ Certains articles du panier ont été ajustés ou retirés suite au changement de dates', 'error');
+    afficherPanier();
+  });
+}
+
+/* ============================================================
+   VALIDATION RÉSERVATION
+   ============================================================ */
 function validerReservation() {
   const client = document.getElementById('client').value.trim();
   const debut = document.getElementById('debut').value;
@@ -362,10 +540,8 @@ function validerReservation() {
     afficherMessage('Veuillez remplir le client et les dates', 'error');
     return;
   }
-
-  const articles = getArticles();
-  if (articles.length === 0) {
-    afficherMessage('Ajoutez au moins un article', 'error');
+  if (panier.length === 0) {
+    afficherMessage('Cliquez sur au moins un meuble dans le stock pour l\'ajouter au panier', 'error');
     return;
   }
 
@@ -373,25 +549,32 @@ function validerReservation() {
   btn.disabled = true;
   btn.textContent = 'Envoi...';
 
-  const payload = { action: 'creerReservation', client: client, articles: articles, debut: debut, fin: fin };
+  const payload = {
+    action: 'creerReservation',
+    client: client,
+    articles: panier.map(function(p) { return { id: p.id, quantite: p.quantite }; }),
+    debut: debut,
+    fin: fin
+  };
 
   appelAPI('creerReservation', 'POST', payload)
     .then(function(res) {
       if (res && res.succes) {
-        afficherMessage('✅ ' + (res.message || 'Réservation créée'), 'success');
+        afficherMessage('✅ ' + escapeHtml(res.message || 'Réservation créée'), 'success');
         document.getElementById('client').value = '';
         document.getElementById('debut').value = '';
         document.getElementById('fin').value = '';
-        document.getElementById('extrasList').innerHTML = '';
+        panier = [];
+        afficherPanier();
         chargerStock();
         chargerReservations();
       } else {
         const msg = (res && res.message) ? res.message : "Réservation impossible";
-        let messageComplet = '❌ <strong>Réservation refusée</strong><br>' + msg;
+        let messageComplet = '❌ <strong>Réservation refusée</strong><br>' + escapeHtml(msg);
         if (msg.toLowerCase().indexOf('insuffisant') !== -1) {
           messageComplet += '<br><br>👉 <em>Conseil : vérifiez la disponibilité pour cette période, ou réduisez la quantité / changez les dates.</em>';
         } else if (msg.toLowerCase().indexOf('invalide') !== -1) {
-          messageComplet += '<br><br>👉 <em>Conseil : la quantité de cet article est invalide dans l\'inventaire. Corrigez le Google Sheets.</em>';
+          messageComplet += '<br><br>👉 <em>Conseil : la quantité de cet article est invalide dans l\'inventaire.</em>';
         }
         afficherMessage(messageComplet, 'error');
       }
@@ -400,7 +583,7 @@ function validerReservation() {
       if (err.message === 'HTML_RESPONSE') {
         afficherMessage('❌ <strong>Erreur de connexion</strong><br>Le serveur ne répond pas correctement.', 'error');
       } else {
-        afficherMessage('❌ <strong>Erreur</strong> : ' + err.message, 'error');
+        afficherMessage('❌ <strong>Erreur</strong> : ' + escapeHtml(err.message), 'error');
       }
     })
     .finally(function() {
@@ -409,7 +592,9 @@ function validerReservation() {
     });
 }
 
-// ========== RÉSERVATIONS ==========
+/* ============================================================
+   RÉSERVATIONS
+   ============================================================ */
 function chargerReservations() {
   const el = document.getElementById('tableReservations');
   el.innerHTML = '<div class="loading"><span class="spinner"></span>Chargement...</div>';
@@ -423,7 +608,7 @@ function chargerReservations() {
     reservationsCache = data;
     afficherReservations();
   }).catch(function(err) {
-    el.innerHTML = '<div class="message error">Erreur : ' + err.message + '</div>';
+    el.innerHTML = '<div class="message error">Erreur : ' + escapeHtml(err.message) + '</div>';
   });
 }
 
@@ -469,22 +654,21 @@ function afficherReservations() {
 
     html += '<tr class="groupe-ligne" id="row-' + g + '" onclick="toggleGroupe(\'' + g + '\')">';
     html += '<td><span class="expand-icon" id="icon-' + g + '">▶</span>';
-    html += '<strong>' + premiere.client + '</strong>';
+    html += '<strong>' + escapeHtml(premiere.client) + '</strong>';
     html += ' <span style="color:#5a6b62;font-size:11px;font-weight:normal;">(' + lignes.length + ' article' + (lignes.length > 1 ? 's' : '') + ')</span></td>';
     html += '<td>' + totalArticles + '</td><td>' + premiere.debut + '</td><td>' + premiere.fin + '</td>';
-    html += '<td><span class="badge ' + badgeClass + '">' + premiere.statut + '</span></td>';
+    html += '<td><span class="badge ' + badgeClass + '">' + escapeHtml(premiere.statut) + '</span></td>';
     html += '<td class="actions">';
     if (premiere.statut === 'Réservé') {
-      html += '<button class="small success" onclick="event.stopPropagation();changerStatutGroupe(\'' + g + '\', \'Confirmé\')">Confirmer</button>';
-      html += '<button class="small danger" onclick="event.stopPropagation();changerStatutGroupe(\'' + g + '\', \'Annulé\')">Annuler</button>';
+      html += '<button class="small success" onclick="event.stopPropagation();changerStatutGroupe(\'' + escapeJs(g) + '\', \'Confirmé\')">Confirmer</button>';
+      html += '<button class="small danger" onclick="event.stopPropagation();changerStatutGroupe(\'' + escapeJs(g) + '\', \'Annulé\')">Annuler</button>';
     } else if (premiere.statut === 'Confirmé') {
-      html += '<button class="small danger" onclick="event.stopPropagation();changerStatutGroupe(\'' + g + '\', \'Annulé\')">Annuler</button>';
+      html += '<button class="small danger" onclick="event.stopPropagation();changerStatutGroupe(\'' + escapeJs(g) + '\', \'Annulé\')">Annuler</button>';
     } else if (premiere.statut === 'Terminé') {
-      html += '<button class="small success" onclick="event.stopPropagation();validerRetour(\'' + g + '\')">✅ Valider le retour</button>';
+      html += '<button class="small success" onclick="event.stopPropagation();validerRetour(\'' + escapeJs(g) + '\')">✅ Valider le retour</button>';
     }
     html += '</td></tr>';
 
-    // Détails avec photos miniatures
     html += '<tr class="details-ligne" id="det-' + g + '"><td colspan="6">';
     html += '<table><thead><tr><th style="width:50px;">Photo</th><th>Article</th><th>Quantité</th></tr></thead><tbody>';
     lignes.forEach(function(l) {
@@ -492,14 +676,14 @@ function afficherReservations() {
       const nomImg = imageParId[l.materiel];
       let photoCell;
       if (nomImg) {
-        photoCell = '<img class="stock-photo" src="' + urlPhotoThumb(nomImg) + '" alt="" loading="lazy" ' +
+        photoCell = '<img class="stock-photo" src="' + escapeHtml(urlPhotoThumb(nomImg)) + '" alt="" loading="lazy" ' +
                     'style="cursor:zoom-in;" ' +
-                    'onclick="event.stopPropagation();afficherImage(\'' + nomImg.replace(/'/g, "\\'") + '\', \'' + designation.replace(/'/g, "\\'") + '\')" ' +
+                    'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(nomImg) + '\', \'' + escapeJs(designation) + '\')" ' +
                     'onerror="this.outerHTML=\'<div class=&quot;stock-photo-placeholder&quot;>📦</div>\'">';
       } else {
         photoCell = '<div class="stock-photo-placeholder">📦</div>';
       }
-      html += '<tr><td>' + photoCell + '</td><td>' + designation + '</td><td>' + l.quantite + '</td></tr>';
+      html += '<tr><td>' + photoCell + '</td><td>' + escapeHtml(designation) + '</td><td>' + l.quantite + '</td></tr>';
     });
     html += '</tbody></table></td></tr>';
   });
@@ -530,11 +714,11 @@ function changerStatutGroupe(groupe, statut) {
   appelAPI('changerStatutGroupe', 'POST', {action: 'changerStatutGroupe', groupe: groupe, statut: statut})
     .then(function(res) {
       if (res && res.succes) {
-        afficherMessage('✅ ' + res.message, 'success');
+        afficherMessage('✅ ' + escapeHtml(res.message), 'success');
         chargerReservations();
         chargerStock();
       } else {
-        afficherMessage('❌ ' + (res && res.message ? res.message : "Erreur"), 'error');
+        afficherMessage('❌ ' + escapeHtml(res && res.message ? res.message : "Erreur"), 'error');
       }
     });
 }
@@ -545,16 +729,18 @@ function validerRetour(groupe) {
   appelAPI('changerStatutGroupe', 'POST', {action: 'changerStatutGroupe', groupe: groupe, statut: 'Supprimer'})
     .then(function(res) {
       if (res && res.succes) {
-        afficherMessage('✅ ' + res.message, 'success');
+        afficherMessage('✅ ' + escapeHtml(res.message), 'success');
         chargerReservations();
         chargerStock();
       } else {
-        afficherMessage('❌ ' + (res && res.message ? res.message : "Erreur"), 'error');
+        afficherMessage('❌ ' + escapeHtml(res && res.message ? res.message : "Erreur"), 'error');
       }
     });
 }
 
-// ========== INITIALISATION ==========
+/* ============================================================
+   INITIALISATION
+   ============================================================ */
 document.addEventListener('DOMContentLoaded', function() {
   const auj = aujourdhui();
   document.getElementById('dateVerifDebut').value = auj;
@@ -562,6 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
   chargerStock();
   chargerReservations();
   chargerInventaire();
+  afficherPanier();
 });
 </script>
 
