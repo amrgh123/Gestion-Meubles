@@ -129,13 +129,12 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 </div>
 
 <script>
-// ⚠️ REMPLACEZ PAR L'URL DE VOTRE NOUVEAU DÉPLOIEMENT APPS SCRIPT
-const API_URL = "https://script.google.com/macros/s/AKfycbxfsCiC0ZwMSvPuWBOZw4QOwhPZmQxVgHngvJN36wEk4ULvKR-K3XsuwNARU8ZNjQmI/exec";
+// ⚠️ REMPLACEZ PAR L'URL DE VOTRE DÉPLOIEMENT APPS SCRIPT
+const API_URL = "https://script.google.com/macros/s/VOTRE_ID_ICI/exec";
 
 let reservationsCache = [];
 let inventaireCache = [];
 let dispoCache = [];
-let filtreStockActuel = "";
 
 function formatDate(date) {
   return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, '0') + "-" + String(date.getDate()).padStart(2, '0');
@@ -188,6 +187,7 @@ function appelAPI(action, methode, data) {
   }
 }
 
+// ========== STOCK ==========
 function chargerStock() {
   const debut = document.getElementById('dateVerifDebut').value || aujourdhui();
   const fin = document.getElementById('dateVerifFin').value || aujourdhui();
@@ -213,16 +213,33 @@ function afficherStock() {
   dispoCache.forEach(function(item) {
     if (filtre && item.type.toLowerCase().indexOf(filtre) === -1 && item.id.toLowerCase().indexOf(filtre) === -1) return;
     count++;
-    const cls = item.disponible < 5 ? 'stock-row alerte' : 'stock-row';
+
+    // 🔴 Rouge si l'API a marqué l'article en alerte
+    const cls = item.alerte ? 'stock-row alerte' : 'stock-row';
+
+    // Affichage adapté selon le cas
+    let qteAffichage, sousTitre;
+    if (item.invalide) {
+      qteAffichage = '⚠️';
+      sousTitre = 'Quantité invalide dans le tableau';
+    } else if (item.total > 0 && item.disponible === 0) {
+      qteAffichage = '0';
+      sousTitre = 'Tout le stock est réservé sur cette période';
+    } else {
+      qteAffichage = item.disponible;
+      sousTitre = item.id + ' • sur ' + item.total + ' en stock';
+    }
+
     html += '<div class="' + cls + '">';
-    html += '<div class="stock-name">' + item.type + '<div class="stock-sub">' + item.id + ' • sur ' + item.total + ' en stock</div></div>';
-    html += '<div class="stock-qte">' + item.disponible + '</div></div>';
+    html += '<div class="stock-name">' + item.type + '<div class="stock-sub">' + sousTitre + '</div></div>';
+    html += '<div class="stock-qte">' + qteAffichage + '</div></div>';
   });
 
   if (count === 0) html = '<div class="empty">Aucun meuble trouvé</div>';
   el.innerHTML = html;
 }
 
+// ========== INVENTAIRE ==========
 function chargerInventaire() {
   if (inventaireCache.length > 0) return Promise.resolve();
   return appelAPI('inventaire', 'GET').then(function(data) {
@@ -230,6 +247,7 @@ function chargerInventaire() {
   });
 }
 
+// ========== AJOUT D'ARTICLE ==========
 function ajouterArticle() {
   if (inventaireCache.length === 0) {
     chargerInventaire().then(function() { ajouterArticle(); });
@@ -258,6 +276,7 @@ function getArticles() {
   return articles;
 }
 
+// ========== VALIDATION RÉSERVATION ==========
 function validerReservation() {
   const client = document.getElementById('client').value.trim();
   const debut = document.getElementById('debut').value;
@@ -295,6 +314,8 @@ function validerReservation() {
         let messageComplet = '❌ <strong>Réservation refusée</strong><br>' + msg;
         if (msg.toLowerCase().indexOf('insuffisant') !== -1) {
           messageComplet += '<br><br>👉 <em>Conseil : vérifiez la disponibilité pour cette période, ou réduisez la quantité / changez les dates.</em>';
+        } else if (msg.toLowerCase().indexOf('invalide') !== -1) {
+          messageComplet += '<br><br>👉 <em>Conseil : la quantité de cet article est invalide dans l\'inventaire. Corrigez le Google Sheets.</em>';
         }
         afficherMessage(messageComplet, 'error');
       }
@@ -312,6 +333,7 @@ function validerReservation() {
     });
 }
 
+// ========== RÉSERVATIONS ==========
 function chargerReservations() {
   const el = document.getElementById('tableReservations');
   el.innerHTML = '<div class="loading"><span class="spinner"></span>Chargement...</div>';
@@ -441,6 +463,7 @@ function validerRetour(groupe) {
     });
 }
 
+// ========== INITIALISATION ==========
 document.addEventListener('DOMContentLoaded', function() {
   const auj = aujourdhui();
   document.getElementById('dateVerifDebut').value = auj;
