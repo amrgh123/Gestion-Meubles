@@ -49,13 +49,17 @@ button.danger { background: #a12c2c; color: #f5e5e5; }
 button.success { background: #4a7a4a; color: #e8f0e0; }
 button.small { width: auto; padding: 4px 10px; font-size: 10px; }
 button.btn-valider {
-  background: #4a7a4a;
-  color: #e8f0e0;
+  background: #1e4d7b;
+  color: #ffffff;
   width: auto;
-  padding: 6px 14px;
+  padding: 8px 18px;
   font-size: 11px;
   margin-top: 8px;
+  border: none;
+  box-shadow: 0 2px 6px rgba(30, 77, 123, 0.3);
 }
+button.btn-valider:hover { background: #2a5d94; }
+button.btn-valider:disabled { background: #a8b0a5; box-shadow: none; }
 
 /* ===== BANDEAU DATES VERROUILLÉES ===== */
 .dates-verrouillees {
@@ -85,7 +89,7 @@ button.btn-valider {
 .panier-nom small { display: block; color: #5a6b62; font-size: 10px; }
 .panier-qte { display: flex; align-items: center; gap: 3px; }
 .panier-qte button { width: 24px; height: 24px; padding: 0; font-size: 14px; line-height: 1; font-weight: 700; }
-.panier-qte input { width: 44px; text-align: center; padding: 3px; font-size: 12px; font-weight: 700; }
+.panier-qte .qte-valeur { font-size: 13px; font-weight: 700; min-width: 24px; text-align: center; display: inline-block; }
 .panier-btn-x { background: #a12c2c; color: #f5e5e5; width: 26px; height: 26px; padding: 0; font-size: 11px; border-radius: 50%; }
 
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -145,7 +149,7 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 /* Sélecteur d'articles avec photos */
 .selecteur-articles {
   margin-top: 10px;
-  padding: 8px;
+  padding: 10px;
   background: #f4f5f1;
   border: 1px dashed #c8cfc0;
   border-radius: 4px;
@@ -155,15 +159,15 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
   color: #5a6b62;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .selecteur-articles input[type="text"] {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   font-size: 12px;
   padding: 6px 8px;
 }
 .liste-articles {
-  max-height: 220px;
+  max-height: 300px;
   overflow-y: auto;
   background: white;
   border: 1px solid #e2e5dc;
@@ -171,22 +175,28 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 }
 .article-choix {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 28px 32px 1fr 60px 70px;
   gap: 8px;
   align-items: center;
-  padding: 6px 8px;
-  cursor: pointer;
+  padding: 6px 10px;
   border-bottom: 1px solid #e8ebe4;
   font-size: 12px;
+  cursor: pointer;
   transition: background 0.1s;
 }
 .article-choix:last-child { border-bottom: none; }
-.article-choix:hover { background: #e8f0e0; }
+.article-choix:hover { background: #f0f3ec; }
+.article-choix.selectionne { background: #e8f0e0; border-left: 3px solid #4a7a4a; }
 .article-choix.indispo {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.article-choix.indispo:hover { background: #fce8e8; }
+.article-choix input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #4a7a4a;
+}
 .article-choix-nom { line-height: 1.3; }
 .article-choix-dispo {
   font-size: 11px;
@@ -196,6 +206,39 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
   white-space: nowrap;
 }
 .article-choix-dispo.zero { color: #c0392b; }
+.article-choix input[type="number"] {
+  width: 60px;
+  padding: 4px 6px;
+  font-size: 12px;
+  text-align: center;
+  font-weight: 700;
+}
+.barre-actions-selecteur {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e5dc;
+}
+.compteur-selection {
+  font-size: 11px;
+  color: #5a6b62;
+  font-style: italic;
+}
+button.btn-ajouter-selection {
+  background: #4a7a4a;
+  color: #e8f0e0;
+  padding: 8px 16px;
+  font-size: 11px;
+  width: auto;
+  font-weight: 700;
+}
+button.btn-ajouter-selection:disabled {
+  background: #a8b0a5;
+  cursor: not-allowed;
+}
 </style>
 </head>
 <body>
@@ -278,8 +321,11 @@ let inventaireCache = [];
 let dispoCache = [];
 let panier = [];
 
-// Modifications en cours par groupe : { groupeId: { articleId: nouvelleQte, ... } }
+// Modifications en cours par groupe : { groupeId: { articleId: nouvelleQte } }
 let modificationsEnCours = {};
+
+// Sélection dans le sélecteur d'ajout : { groupeId: { articleId: { qte, coche } } }
+let selectionEnCours = {};
 
 /* ============================================================
    UTILITAIRES
@@ -774,11 +820,9 @@ function afficherReservations() {
     if (premiere.statut === 'Confirmé') badgeClass = 'confirme';
     else if (premiere.statut === 'Terminé') badgeClass = 'termine';
 
-    const totalArticles = lignes.reduce(function(sum, l) { return sum + l.quantite; }, 0);
-
     // Total affiché (avec modifications en cours)
-    let totalAffiche = 0;
     const modsGroupe = modificationsEnCours[g] || {};
+    let totalAffiche = 0;
     lignes.forEach(function(l) {
       const nouvelle = modsGroupe[l.materiel] !== undefined ? modsGroupe[l.materiel] : l.quantite;
       totalAffiche += nouvelle;
@@ -814,13 +858,10 @@ function afficherReservations() {
       const designation = typeParId[l.materiel] || l.materiel;
       const nomImg = imageParId[l.materiel];
 
-      // Quantité affichée = valeur en cours de modification OU valeur d'origine
       const nouvelleQte = modsGroupe[l.materiel] !== undefined ? modsGroupe[l.materiel] : l.quantite;
       const estModifie = modsGroupe[l.materiel] !== undefined && modsGroupe[l.materiel] !== l.quantite;
 
-      // Calcul de la dispo restante pour cet article sur la période de la réservation
       const dispoInfo = calculerDispoRestante(l.materiel, premiere.debut, premiere.fin, g);
-      const maxAutorise = dispoInfo !== null ? dispoInfo + l.quantite : l.quantite;
 
       let photoCell = '<span style="cursor:zoom-in;" ' +
         (nomImg ? 'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(nomImg) + '\', \'' + escapeJs(designation) + '\')"' : '') +
@@ -837,7 +878,6 @@ function afficherReservations() {
         qteCell = nouvelleQte;
       }
 
-      // Cellule dispo
       let dispoCell;
       if (dispoInfo === null) {
         dispoCell = '<span class="dispo-restante">—</span>';
@@ -879,16 +919,20 @@ function afficherReservations() {
     // Sélecteur d'articles avec photos (si modifiable)
     if (modifiable) {
       html += '<div class="selecteur-articles" id="sel-' + g + '" style="display:none;">';
-      html += '<h4>➕ Ajouter un article</h4>';
+      html += '<h4>➕ Ajouter des articles</h4>';
       html += '<input type="text" placeholder="🔍 Rechercher..." oninput="filtrerArticlesSelecteur(\'' + escapeJs(g) + '\', this.value)" onclick="event.stopPropagation()">';
       html += '<div class="liste-articles" id="liste-' + g + '">';
       html += construireListeArticles(g, premiere.debut, premiere.fin);
       html += '</div>';
-      html += '<div style="margin-top:8px;text-align:right;">';
-      html += '<button class="small" style="background:#a8b0a5;color:white;width:auto;padding:6px 12px;" onclick="event.stopPropagation();fermerSelecteur(\'' + escapeJs(g) + '\')">Fermer</button>';
+      html += '<div class="barre-actions-selecteur">';
+      html += '<span class="compteur-selection" id="compteur-' + g + '">Aucun article sélectionné</span>';
+      html += '<div style="display:flex;gap:8px;">';
+      html += '<button class="small" style="background:#a8b0a5;color:white;width:auto;padding:8px 16px;" onclick="event.stopPropagation();fermerSelecteur(\'' + escapeJs(g) + '\')">Fermer</button>';
+      html += '<button class="btn-ajouter-selection" id="btn-ajout-sel-' + g + '" disabled onclick="event.stopPropagation();validerSelectionArticles(\'' + escapeJs(g) + '\')">➕ Ajouter la sélection</button>';
       html += '</div>';
       html += '</div>';
-      html += '<button class="small success" style="width:auto;padding:6px 12px;margin-top:8px;" onclick="event.stopPropagation();ouvrirSelecteur(\'' + escapeJs(g) + '\')">➕ Ajouter un article</button>';
+      html += '</div>';
+      html += '<button class="small success" id="btn-open-sel-' + g + '" style="width:auto;padding:6px 12px;margin-top:8px;" onclick="event.stopPropagation();ouvrirSelecteur(\'' + escapeJs(g) + '\')">➕ Ajouter un article</button>';
     }
 
     html += '</td></tr>';
@@ -903,7 +947,6 @@ function afficherReservations() {
    CALCUL DE LA DISPO RESTANTE (hors groupe en cours)
    ============================================================ */
 function calculerDispoRestante(articleId, debut, fin, groupeExclu) {
-  // On utilise la même logique que le serveur : on parcourt reservationsCache
   const inventaire = inventaireCache.find(function(i) { return i.id === articleId; });
   if (!inventaire || inventaire.invalide) return null;
 
@@ -925,25 +968,38 @@ function calculerDispoRestante(articleId, debut, fin, groupeExclu) {
 }
 
 /* ============================================================
-   SÉLECTEUR D'ARTICLES (avec photos + dispo)
+   SÉLECTEUR D'ARTICLES (avec photos + dispo + cases à cocher)
    ============================================================ */
 function construireListeArticles(groupe, debut, fin) {
   let html = '';
+  let count = 0;
+
   inventaireCache.forEach(function(item) {
     if (item.invalide) return;
 
     const dispo = calculerDispoRestante(item.id, debut, fin, groupe);
-    if (dispo === null || dispo <= 0) return; // on n'affiche pas les articles indispo
+    if (dispo === null || dispo <= 0) return;
 
-    html += '<div class="article-choix" data-nom="' + escapeHtml(item.type.toLowerCase()) + '" ' +
-            'onclick="event.stopPropagation();ajouterArticleDepuisSelecteur(\'' + escapeJs(groupe) + '\', \'' + escapeJs(item.id) + '\')">';
-    html += photoThumbHtml(item.nomImage, 'sm');
+    count++;
+    const sel = selectionEnCours[groupe] && selectionEnCours[groupe][item.id];
+    const coche = sel && sel.coche;
+    const qte = sel ? sel.qte : 1;
+
+    html += '<div class="article-choix' + (coche ? ' selectionne' : '') + '" id="choix-' + groupe + '-' + escapeHtml(item.id) + '">';
+    html += '<input type="checkbox" ' + (coche ? 'checked' : '') +
+            ' onclick="event.stopPropagation();toggleSelection(\'' + escapeJs(groupe) + '\', \'' + escapeJs(item.id) + '\')">';
+    html += '<span style="cursor:zoom-in;" ' +
+            (item.nomImage ? 'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(item.nomImage) + '\', \'' + escapeJs(item.type) + '\')"' : '') +
+            '>' + photoThumbHtml(item.nomImage, 'sm') + '</span>';
     html += '<div class="article-choix-nom">' + escapeHtml(item.type) + '</div>';
     html += '<div class="article-choix-dispo">' + dispo + ' dispo</div>';
+    html += '<input type="number" min="1" max="' + dispo + '" value="' + qte + '" ' +
+            'onclick="event.stopPropagation()" ' +
+            'onchange="event.stopPropagation();setQteSelection(\'' + escapeJs(groupe) + '\', \'' + escapeJs(item.id) + '\', this.value)">';
     html += '</div>';
   });
 
-  if (!html) html = '<div style="padding:12px;text-align:center;color:#8a9490;font-size:12px;">Aucun article disponible sur cette période</div>';
+  if (count === 0) html = '<div style="padding:12px;text-align:center;color:#8a9490;font-size:12px;">Aucun article disponible sur cette période</div>';
   return html;
 }
 
@@ -951,41 +1007,129 @@ function filtrerArticlesSelecteur(groupe, texte) {
   const filtre = (texte || '').toLowerCase();
   const items = document.querySelectorAll('#liste-' + groupe + ' .article-choix');
   items.forEach(function(el) {
-    const nom = el.getAttribute('data-nom') || '';
-    el.style.display = nom.indexOf(filtre) !== -1 ? '' : 'none';
+    const nom = el.querySelector('.article-choix-nom');
+    const texteItem = nom ? nom.textContent.toLowerCase() : '';
+    el.style.display = texteItem.indexOf(filtre) !== -1 ? '' : 'none';
   });
 }
 
 function ouvrirSelecteur(groupe) {
   const el = document.getElementById('sel-' + groupe);
   if (el) el.style.display = 'block';
-  // Cacher le bouton d'ouverture
-  const btn = event && event.target;
-  if (btn && btn.tagName === 'BUTTON') btn.style.display = 'none';
+  const btn = document.getElementById('btn-open-sel-' + groupe);
+  if (btn) btn.style.display = 'none';
 }
 
 function fermerSelecteur(groupe) {
   const el = document.getElementById('sel-' + groupe);
   if (el) el.style.display = 'none';
+  const btn = document.getElementById('btn-open-sel-' + groupe);
+  if (btn) btn.style.display = '';
+  delete selectionEnCours[groupe];
 }
 
-function ajouterArticleDepuisSelecteur(groupe, articleId) {
-  appelAPI('ajouterArticleGroupe', 'POST', {
-    action: 'ajouterArticleGroupe',
-    groupe: groupe,
-    articleId: articleId,
-    quantite: 1
-  }).then(function(res) {
-    if (res && res.succes) {
-      afficherMessage('✅ ' + escapeHtml(res.message), 'success');
+function toggleSelection(groupe, articleId) {
+  if (!selectionEnCours[groupe]) selectionEnCours[groupe] = {};
+  const sel = selectionEnCours[groupe];
+
+  if (sel[articleId] && sel[articleId].coche) {
+    delete sel[articleId];
+  } else {
+    sel[articleId] = { coche: true, qte: 1 };
+  }
+
+  rafraichirSelecteur(groupe);
+}
+
+function setQteSelection(groupe, articleId, valeur) {
+  if (!selectionEnCours[groupe]) selectionEnCours[groupe] = {};
+  const sel = selectionEnCours[groupe];
+  if (!sel[articleId]) sel[articleId] = { coche: true, qte: 1 };
+
+  let v = parseInt(valeur) || 1;
+  if (v < 1) v = 1;
+
+  const premiere = reservationsCache.find(function(r) { return r.groupe === groupe; });
+  if (premiere) {
+    const dispo = calculerDispoRestante(articleId, premiere.debut, premiere.fin, groupe);
+    if (dispo !== null && v > dispo) {
+      afficherMessage('⚠️ Maximum disponible : ' + dispo + ' pour cet article', 'warning');
+      v = dispo;
+    }
+  }
+
+  sel[articleId].qte = v;
+  sel[articleId].coche = true;
+  rafraichirSelecteur(groupe);
+}
+
+function rafraichirSelecteur(groupe) {
+  const el = document.getElementById('liste-' + groupe);
+  const premiere = reservationsCache.find(function(r) { return r.groupe === groupe; });
+  if (!el || !premiere) return;
+  el.innerHTML = construireListeArticles(groupe, premiere.debut, premiere.fin);
+  mettreAJourCompteur(groupe);
+}
+
+function mettreAJourCompteur(groupe) {
+  const el = document.getElementById('compteur-' + groupe);
+  if (!el) return;
+  const sel = selectionEnCours[groupe] || {};
+  const nb = Object.keys(sel).filter(function(k) { return sel[k].coche; }).length;
+  el.textContent = nb === 0 ? 'Aucun article sélectionné' : nb + ' article' + (nb > 1 ? 's' : '') + ' sélectionné' + (nb > 1 ? 's' : '');
+  const btn = document.getElementById('btn-ajout-sel-' + groupe);
+  if (btn) btn.disabled = nb === 0;
+}
+
+function validerSelectionArticles(groupe) {
+  const sel = selectionEnCours[groupe] || {};
+  const articleIds = Object.keys(sel).filter(function(k) { return sel[k].coche; });
+
+  if (articleIds.length === 0) {
+    afficherMessage('Sélectionnez au moins un article', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btn-ajout-sel-' + groupe);
+  if (btn) { btn.disabled = true; btn.textContent = 'Ajout...'; }
+
+  let index = 0;
+  let erreurs = [];
+
+  function suivant() {
+    if (index >= articleIds.length) {
+      if (erreurs.length > 0) {
+        afficherMessage('⚠️ ' + erreurs.length + ' erreur(s) : ' + escapeHtml(erreurs.join(' • ')), 'warning');
+      } else {
+        afficherMessage('✅ ' + articleIds.length + ' article(s) ajouté(s)', 'success');
+      }
+      delete selectionEnCours[groupe];
       chargerReservations();
       chargerStock();
-    } else {
-      afficherMessage('❌ ' + escapeHtml((res && res.message) || 'Erreur'), 'error');
+      return;
     }
-  }).catch(function(err) {
-    afficherMessage('❌ ' + escapeHtml(err.message), 'error');
-  });
+
+    const aid = articleIds[index];
+    const qte = sel[aid].qte;
+    index++;
+
+    appelAPI('ajouterArticleGroupe', 'POST', {
+      action: 'ajouterArticleGroupe',
+      groupe: groupe,
+      articleId: aid,
+      quantite: qte
+    }).then(function(res) {
+      if (!res || !res.succes) {
+        erreurs.push((res && res.message) || aid);
+      }
+      suivant();
+    }).catch(function(err) {
+      erreurs.push(err.message);
+      suivant();
+    });
+  }
+
+  suivant();
 }
 
 /* ============================================================
@@ -1004,14 +1148,12 @@ function modifierQteResa(groupe, articleId, delta) {
   const nouvelle = qteActuelle + delta;
 
   if (nouvelle < 1) {
-    // Retour à 0 = on propose la suppression
     if (confirm('Mettre la quantité à 0 supprime cet article. Confirmer ?')) {
       supprimerLigneResa(groupe, articleId);
     }
     return;
   }
 
-  // Vérifier la dispo max
   const dispo = calculerDispoRestante(articleId, ligne.debut, ligne.fin, groupe);
   if (dispo === null) {
     afficherMessage('❌ Impossible de calculer la disponibilité', 'error');
@@ -1033,7 +1175,6 @@ function modifierQteResa(groupe, articleId, delta) {
   if (Object.keys(actuelles).length === 0) delete modificationsEnCours[groupe];
 
   afficherReservations();
-  // Rouvrir le détail du groupe
   setTimeout(function() {
     const det = document.getElementById('det-' + groupe);
     const icon = document.getElementById('icon-' + groupe);
@@ -1053,7 +1194,6 @@ function validerModifications(groupe) {
   const btn = event && event.target;
   if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement...'; }
 
-  // Envoi en série des modifications
   const articleIds = Object.keys(mods);
   let index = 0;
   let erreur = null;
