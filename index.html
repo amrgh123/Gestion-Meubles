@@ -30,9 +30,11 @@ h3 { font-size: 12px; margin: 12px 0 8px; color: #5a6b62; text-transform: upperc
 .stock-name { flex: 1; margin-right: 10px; line-height: 1.3; min-width: 0; }
 .stock-qte { font-size: 15px; font-weight: 700; min-width: 40px; text-align: right; }
 .stock-sub { font-size: 10px; opacity: 0.6; }
+
 /* ===== PHOTOS ARTICLES ===== */
 .stock-photo { width: 42px; height: 42px; object-fit: cover; border-radius: 4px; margin-right: 10px; flex-shrink: 0; background: #e8ebe4; border: 1px solid #d7deca; }
 .stock-photo-placeholder { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #a8b0a5; background: #e8ebe4; border: 1px solid #d7deca; border-radius: 4px; margin-right: 10px; flex-shrink: 0; }
+
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 8px; }
 .form-group { margin-bottom: 6px; }
 .form-group label { display: block; font-size: 10px; color: #5a6b62; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
@@ -44,6 +46,23 @@ button:disabled { background: #a8b0a5; cursor: not-allowed; }
 button.danger { background: #a12c2c; color: #f5e5e5; }
 button.success { background: #4a7a4a; color: #e8f0e0; }
 button.small { width: auto; padding: 4px 10px; font-size: 10px; }
+
+/* ===== BANDEAU DATES VERROUILLÉES ===== */
+.dates-verrouillees {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f4f5f1;
+  border: 1px dashed #c8cfc0;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.dates-verrouillees strong { color: #293a34; font-weight: 700; }
+.dates-verrouillees .hint { color: #8a9490; font-style: italic; font-size: 11px; }
+.dates-verrouillees.invalide { background: #fce8e8; border-color: #c0392b; color: #842029; }
 
 /* ===== PANIER ===== */
 .panier { background: #f9faf7; border: 1px solid #d7deca; border-radius: 4px; padding: 10px; min-height: 50px; margin-bottom: 10px; }
@@ -114,9 +133,9 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 <div class="card">
   <h2>📦 Stock disponible
     <span style="font-size:11px;color:#5a6b62;font-weight:400;margin-left:8px;">
-      <input type="date" id="dateVerifDebut" style="width:130px;display:inline-block;padding:4px 6px;font-size:11px;">
+      <input type="date" id="dateVerifDebut" style="width:130px;display:inline-block;padding:4px 6px;font-size:11px;" onchange="rafraichirDispoPourPanier()">
       →
-      <input type="date" id="dateVerifFin" style="width:130px;display:inline-block;padding:4px 6px;font-size:11px;">
+      <input type="date" id="dateVerifFin" style="width:130px;display:inline-block;padding:4px 6px;font-size:11px;" onchange="rafraichirDispoPourPanier()">
       <button class="small" onclick="chargerStock()" style="margin-left:6px;">Vérifier</button>
     </span>
   </h2>
@@ -128,19 +147,17 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 
 <div class="card">
   <h2>➕ Nouvelle réservation</h2>
+
   <div class="form-row">
     <div class="form-group">
       <label>Client</label>
       <input type="text" id="client" placeholder="Nom du client">
     </div>
-    <div class="form-group">
-      <label>Date de début</label>
-      <input type="date" id="debut" onchange="rafraichirDispoPourPanier()">
-    </div>
-    <div class="form-group">
-      <label>Date de fin</label>
-      <input type="date" id="fin" onchange="rafraichirDispoPourPanier()">
-    </div>
+  </div>
+
+  <div class="dates-verrouillees" id="datesVerrouillees">
+    <span>📅 Période : <strong id="datesAffichees">—</strong></span>
+    <span class="hint">(modifiable dans la section 📦 Stock ci-dessus)</span>
   </div>
 
   <h3>🛒 Panier</h3>
@@ -305,6 +322,24 @@ document.addEventListener('keydown', function(e) {
 });
 
 /* ============================================================
+   DATES VERROUILLÉES (affichage)
+   ============================================================ */
+function afficherDatesVerrouillees() {
+  const debut = document.getElementById('dateVerifDebut').value;
+  const fin = document.getElementById('dateVerifFin').value;
+  const el = document.getElementById('datesAffichees');
+  const box = document.getElementById('datesVerrouillees');
+
+  if (debut && fin) {
+    el.textContent = debut + '  →  ' + fin;
+    box.classList.remove('invalide');
+  } else {
+    el.textContent = 'Dates non définies';
+    box.classList.add('invalide');
+  }
+}
+
+/* ============================================================
    STOCK — affichage avec clic → panier
    ============================================================ */
 function chargerStock() {
@@ -317,6 +352,28 @@ function chargerStock() {
     .then(function(data) {
       dispoCache = data;
       afficherStock();
+      afficherDatesVerrouillees();
+
+      // Réajuste le panier selon la nouvelle dispo
+      if (panier.length > 0) {
+        const nouvelleDispo = {};
+        data.forEach(function(d) { nouvelleDispo[d.id] = d; });
+        const nouveaux = [];
+        let avertissement = false;
+        panier.forEach(function(p) {
+          const nd = nouvelleDispo[p.id];
+          if (!nd || nd.alerte) { avertissement = true; return; }
+          p.maxDispo = nd.disponible;
+          if (p.quantite > nd.disponible) {
+            p.quantite = nd.disponible;
+            avertissement = true;
+          }
+          nouveaux.push(p);
+        });
+        panier = nouveaux;
+        if (avertissement) afficherMessage('⚠️ Certains articles du panier ont été ajustés suite à la vérification', 'error');
+        afficherPanier();
+      }
     })
     .catch(function(err) {
       el.innerHTML = '<div class="message error">Erreur : ' + escapeHtml(err.message) + '</div>';
@@ -358,7 +415,6 @@ function afficherStock() {
       photoHtml = '<div class="stock-photo-placeholder">📦</div>';
     }
 
-    // ✨ Clic gauche = ajout panier ; clic sur la photo = agrandir
     let clickAttr = '';
     let titleAttr = '';
     if (desactive) {
@@ -368,7 +424,6 @@ function afficherStock() {
       titleAttr = 'title="Cliquer pour ajouter au panier"';
     }
 
-    // Photo cliquable pour agrandir (uniquement si image existe)
     let photoClickAttr = '';
     if (item.nomImage) {
       photoClickAttr = 'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(item.nomImage) + '\', \'' + escapeJs(item.type) + '\')" ' +
@@ -499,10 +554,13 @@ function afficherPanier() {
 }
 
 function rafraichirDispoPourPanier() {
-  if (panier.length === 0) return;
+  // Récupère les dates du bloc "Stock" (source unique de vérité)
+  const debut = document.getElementById('dateVerifDebut').value;
+  const fin = document.getElementById('dateVerifFin').value;
 
-  const debut = document.getElementById('debut').value;
-  const fin = document.getElementById('fin').value;
+  afficherDatesVerrouillees();
+
+  if (panier.length === 0) return;
   if (!debut || !fin) return;
 
   const url = API_URL + '?action=disponibilite&debut=' + debut + '&fin=' + fin + '&t=' + Date.now();
@@ -533,11 +591,15 @@ function rafraichirDispoPourPanier() {
    ============================================================ */
 function validerReservation() {
   const client = document.getElementById('client').value.trim();
-  const debut = document.getElementById('debut').value;
-  const fin = document.getElementById('fin').value;
+  const debut = document.getElementById('dateVerifDebut').value;
+  const fin = document.getElementById('dateVerifFin').value;
 
-  if (!client || !debut || !fin) {
-    afficherMessage('Veuillez remplir le client et les dates', 'error');
+  if (!client) {
+    afficherMessage('Veuillez renseigner le nom du client', 'error');
+    return;
+  }
+  if (!debut || !fin) {
+    afficherMessage('Veuillez choisir les dates dans la section 📦 Stock', 'error');
     return;
   }
   if (panier.length === 0) {
@@ -562,8 +624,6 @@ function validerReservation() {
       if (res && res.succes) {
         afficherMessage('✅ ' + escapeHtml(res.message || 'Réservation créée'), 'success');
         document.getElementById('client').value = '';
-        document.getElementById('debut').value = '';
-        document.getElementById('fin').value = '';
         panier = [];
         afficherPanier();
         chargerStock();
@@ -745,6 +805,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const auj = aujourdhui();
   document.getElementById('dateVerifDebut').value = auj;
   document.getElementById('dateVerifFin').value = auj;
+  afficherDatesVerrouillees();
   chargerStock();
   chargerReservations();
   chargerInventaire();
