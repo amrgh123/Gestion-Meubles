@@ -850,7 +850,7 @@ function afficherReservations() {
             '<th style="width:50px;">Photo</th>' +
             '<th>Article</th>' +
             '<th style="width:130px;">Quantité</th>' +
-            '<th style="width:120px;">Stock dispo</th>' +
+            '<th style="width:150px;">Marge à ajouter</th>' +
             (modifiable ? '<th style="width:40px;"></th>' : '') +
             '</tr></thead><tbody>';
 
@@ -861,7 +861,8 @@ function afficherReservations() {
       const nouvelleQte = modsGroupe[l.materiel] !== undefined ? modsGroupe[l.materiel] : l.quantite;
       const estModifie = modsGroupe[l.materiel] !== undefined && modsGroupe[l.materiel] !== l.quantite;
 
-      const dispoInfo = calculerDispoRestante(l.materiel, premiere.debut, premiere.fin, g);
+      // 📌 Nouveau calcul : marge = dispoHorsGroupe - déjà réservé par ce groupe
+      const dispoInfo = calculerMargeGroupe(l.materiel, premiere.debut, premiere.fin, g);
 
       let photoCell = '<span style="cursor:zoom-in;" ' +
         (nomImg ? 'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(nomImg) + '\', \'' + escapeJs(designation) + '\')"' : '') +
@@ -878,13 +879,14 @@ function afficherReservations() {
         qteCell = nouvelleQte;
       }
 
+      // 📌 Affichage corrigé de la dispo
       let dispoCell;
       if (dispoInfo === null) {
         dispoCell = '<span class="dispo-restante">—</span>';
       } else {
-        const classe = dispoInfo === 0 ? 'zero' : 'ok';
-        dispoCell = '<span class="dispo-restante ' + classe + '">' + dispoInfo +
-                    '<small>sur ' + (dispoInfo + l.quantite) + ' libres</small></span>';
+        const classe = dispoInfo.marge === 0 ? 'zero' : 'ok';
+        dispoCell = '<span class="dispo-restante ' + classe + '">' + dispoInfo.marge +
+                    '<small>marge (sur ' + dispoInfo.dispoHorsGroupe + ' dispo)</small></span>';
       }
 
       html += '<tr>';
@@ -944,8 +946,10 @@ function afficherReservations() {
 }
 
 /* ============================================================
-   CALCUL DE LA DISPO RESTANTE (hors groupe en cours)
+   CALCULS DE DISPONIBILITÉ
    ============================================================ */
+
+// Dispo brute hors groupe (= total - autres résas, sans tenir compte de ce groupe)
 function calculerDispoRestante(articleId, debut, fin, groupeExclu) {
   const inventaire = inventaireCache.find(function(i) { return i.id === articleId; });
   if (!inventaire || inventaire.invalide) return null;
@@ -967,15 +971,44 @@ function calculerDispoRestante(articleId, debut, fin, groupeExclu) {
   return Math.max(0, inventaire.total - bloque);
 }
 
+// 📌 NOUVEAU : Marge réellement ajoutable à ce groupe pour cet article
+// = dispo hors groupe - quantité déjà réservée par ce groupe (avec modifs en cours)
+function calculerMargeGroupe(articleId, debut, fin, groupe) {
+  const dispoHorsGroupe = calculerDispoRestante(articleId, debut, fin, groupe);
+  if (dispoHorsGroupe === null) return null;
+
+  const modsGroupe = modificationsEnCours[groupe] || {};
+  let dejaDansGroupe = 0;
+
+  reservationsCache.forEach(function(r) {
+    if (r.groupe !== groupe || r.materiel !== articleId) return;
+    const qte = modsGroupe[articleId] !== undefined ? modsGroupe[articleId] : r.quantite;
+    dejaDansGroupe += qte;
+  });
+
+  return {
+    dispoHorsGroupe: dispoHorsGroupe,
+    dejaDansGroupe: dejaDansGroupe,
+    marge: Math.max(0, dispoHorsGroupe - dejaDansGroupe)
+  };
+}
+
 /* ============================================================
-   SÉLECTEUR D'ARTICLES (avec photos + dispo + cases à cocher)
+   SÉLECTEUR D'ARTICLES
    ============================================================ */
 function construireListeArticles(groupe, debut, fin) {
   let html = '';
   let count = 0;
 
+  // 📌 Exclusion des articles déjà présents dans ce groupe
+  const articlesDejaDansGroupe = {};
+  reservationsCache.forEach(function(r) {
+    if (r.groupe === groupe) articlesDejaDansGroupe[r.materiel] = true;
+  });
+
   inventaireCache.forEach(function(item) {
     if (item.invalide) return;
+    if (articlesDejaDansGroupe[item.id]) return;
 
     const dispo = calculerDispoRestante(item.id, debut, fin, groupe);
     if (dispo === null || dispo <= 0) return;
@@ -999,7 +1032,7 @@ function construireListeArticles(groupe, debut, fin) {
     html += '</div>';
   });
 
-  if (count === 0) html = '<div style="padding:12px;text-align:center;color:#8a9490;font-size:12px;">Aucun article disponible sur cette période</div>';
+  if (count === 0) html = '<div style="padding:12px;text-align:center;color:#8a9490;font-size:12px;">Aucun autre article disponible à ajouter</div>';
   return html;
 }
 
@@ -1051,6 +1084,7 @@ function setQteSelection(groupe, articleId, valeur) {
 
   const premiere = reservationsCache.find(function(r) { return r.groupe === groupe; });
   if (premiere) {
+    // 📌 Max = dispo hors groupe (pas de marge, car l'article n'est pas encore dans le groupe)
     const dispo = calculerDispoRestante(articleId, premiere.debut, premiere.fin, groupe);
     if (dispo !== null && v > dispo) {
       afficherMessage('⚠️ Maximum disponible : ' + dispo + ' pour cet article', 'warning');
@@ -1133,7 +1167,7 @@ function validerSelectionArticles(groupe) {
 }
 
 /* ============================================================
-   MODIFICATIONS EN COURS (buffer)
+   MODIFICATIONS EN COURS
    ============================================================ */
 function modifierQteResa(groupe, articleId, delta) {
   const ligne = reservationsCache.find(function(r) {
@@ -1154,15 +1188,14 @@ function modifierQteResa(groupe, articleId, delta) {
     return;
   }
 
-  const dispo = calculerDispoRestante(articleId, ligne.debut, ligne.fin, groupe);
-  if (dispo === null) {
+  // 📌 Max autorisé = dispo hors groupe (ce groupe inclus dans le calcul de sa propre dispo)
+  const dispoHorsGroupe = calculerDispoRestante(articleId, ligne.debut, ligne.fin, groupe);
+  if (dispoHorsGroupe === null) {
     afficherMessage('❌ Impossible de calculer la disponibilité', 'error');
     return;
   }
-  const maxAutorise = dispo + ligne.quantite;
-  if (nouvelle > maxAutorise) {
-    afficherMessage('⚠️ Maximum disponible : ' + maxAutorise + ' sur la période (' +
-                    dispo + ' libres + ' + ligne.quantite + ' déjà réservés)', 'warning');
+  if (nouvelle > dispoHorsGroupe) {
+    afficherMessage('⚠️ Maximum disponible pour cet article sur la période : ' + dispoHorsGroupe, 'warning');
     return;
   }
 
