@@ -420,11 +420,6 @@ button.rendu-btn.principal {
   color: #d7deca;
 }
 button.rendu-btn.principal:hover { background: #3a4f47; }
-button.rendu-btn.secondaire {
-  background: #d7deca;
-  color: #293a34;
-}
-button.rendu-btn.secondaire:hover { background: #c8cfc0; }
 
 .rendu-footer {
   padding: 10px 20px;
@@ -437,25 +432,82 @@ button.rendu-btn.secondaire:hover { background: #c8cfc0; }
 
 /* ===== IMPRESSION ===== */
 @media print {
-  body * { visibility: hidden; }
-  .rendu-modal.open,
-  .rendu-modal.open * { visibility: visible; }
-  .rendu-modal.open {
-    position: absolute;
-    top: 0; left: 0;
-    background: white;
+  /* 1. Masquer TOUT le body */
+  body { 
+    visibility: hidden; 
+    margin: 0; 
     padding: 0;
-    display: block;
+    background: white;
+    overflow: hidden;
+    height: auto;
   }
-  .rendu-contenu {
-    max-width: 100%;
-    box-shadow: none;
-    max-height: none;
-    border-radius: 0;
+  
+  /* 2. Masquer les éléments secondaires */
+  .header,
+  #message,
+  .card,
+  #imageModal,
+  .loading { 
+    display: none !important; 
   }
+  
+  /* 3. Afficher UNIQUEMENT le rendu */
+  #renduModal,
+  #renduModal * { 
+    visibility: visible; 
+  }
+  
+  /* 4. Sortir la modale du flux fixe */
+  #renduModal {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  
+  #renduModal .rendu-contenu {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+  }
+  
+  /* 5. Cacher les boutons d'action et la croix */
   .rendu-btn-fermer,
-  .rendu-actions { display: none !important; }
-  .rendu-tableau-wrapper { overflow: visible; }
+  .rendu-actions { 
+    display: none !important; 
+  }
+  
+  /* 6. Tableau : éviter les coupures */
+  .rendu-tableau-wrapper {
+    overflow: visible !important;
+    padding: 16px 20px !important;
+  }
+  
+  .rendu-tableau {
+    page-break-inside: avoid !important;
+  }
+  
+  .rendu-tableau tr {
+    page-break-inside: avoid !important;
+  }
+  
+  /* 7. Définir un format d'impression propre */
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
 }
 </style>
 </head>
@@ -578,7 +630,6 @@ button.rendu-btn.secondaire:hover { background: #c8cfc0; }
     </div>
 
     <div class="rendu-actions">
-      <button class="rendu-btn secondaire" onclick="copierRendu()">📋 Copier le résumé</button>
       <button class="rendu-btn principal" onclick="imprimerRendu()">🖨️ Imprimer / PDF</button>
     </div>
 
@@ -1701,61 +1752,6 @@ function fermerRendu(event) {
 
 function imprimerRendu() {
   window.print();
-}
-
-function copierRendu() {
-  if (!renduGroupeActuel) return;
-  const lignes = reservationsCache.filter(function(r) {
-    return r.groupe === renduGroupeActuel && r.statut !== 'Annulé';
-  });
-  if (lignes.length === 0) return;
-
-  const premiere = lignes[0];
-  const typeParId = {};
-  inventaireCache.forEach(function(item) { typeParId[item.id] = item.type; });
-
-  let texte = '📄 FICHE DE RÉSERVATION — DuoDisplay\n';
-  texte += '═════════════════════════════════════\n';
-  texte += 'Client  : ' + (premiere.client || '—') + '\n';
-  texte += 'Période : ' + premiere.debut + '  →  ' + premiere.fin + '\n';
-  texte += 'Statut  : ' + (premiere.statut || '—') + '\n';
-  texte += '═════════════════════════════════════\n\n';
-  texte += 'ARTICLES :\n';
-
-  let total = 0;
-  lignes.forEach(function(l) {
-    const designation = typeParId[l.materiel] || l.materiel;
-    texte += '• ' + designation + ' × ' + l.quantite + '\n';
-    total += l.quantite;
-  });
-  texte += '\nTOTAL ARTICLES : ' + total + '\n\n';
-  texte += 'DuoDisplay — ' + new Date().toLocaleString('fr-FR');
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(texte).then(function() {
-      afficherMessage('✅ Résumé copié dans le presse-papier', 'success');
-    }).catch(function() {
-      _copierFallback(texte);
-    });
-  } else {
-    _copierFallback(texte);
-  }
-}
-
-function _copierFallback(texte) {
-  const ta = document.createElement('textarea');
-  ta.value = texte;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
-  document.body.appendChild(ta);
-  ta.select();
-  try {
-    document.execCommand('copy');
-    afficherMessage('✅ Résumé copié dans le presse-papier', 'success');
-  } catch (e) {
-    afficherMessage('❌ Impossible de copier automatiquement', 'error');
-  }
-  document.body.removeChild(ta);
 }
 
 /* ============================================================
