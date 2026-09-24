@@ -33,7 +33,9 @@ h3 { font-size: 12px; margin: 12px 0 8px; color: #5a6b62; text-transform: upperc
 
 /* ===== PHOTOS ARTICLES ===== */
 .stock-photo { width: 42px; height: 42px; object-fit: cover; border-radius: 4px; margin-right: 10px; flex-shrink: 0; background: #e8ebe4; border: 1px solid #d7deca; }
+.stock-photo-sm { width: 28px; height: 28px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: #e8ebe4; border: 1px solid #d7deca; }
 .stock-photo-placeholder { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #a8b0a5; background: #e8ebe4; border: 1px solid #d7deca; border-radius: 4px; margin-right: 10px; flex-shrink: 0; }
+.stock-photo-placeholder-sm { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #a8b0a5; background: #e8ebe4; border: 1px solid #d7deca; border-radius: 3px; flex-shrink: 0; }
 
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 8px; }
 .form-group { margin-bottom: 6px; }
@@ -46,6 +48,14 @@ button:disabled { background: #a8b0a5; cursor: not-allowed; }
 button.danger { background: #a12c2c; color: #f5e5e5; }
 button.success { background: #4a7a4a; color: #e8f0e0; }
 button.small { width: auto; padding: 4px 10px; font-size: 10px; }
+button.btn-valider {
+  background: #4a7a4a;
+  color: #e8f0e0;
+  width: auto;
+  padding: 6px 14px;
+  font-size: 11px;
+  margin-top: 8px;
+}
 
 /* ===== BANDEAU DATES VERROUILLÉES ===== */
 .dates-verrouillees {
@@ -103,6 +113,7 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 .message.error { background: #f5d7d7; color: #842029; border-left: 4px solid #c0392b; padding: 12px 15px; font-size: 13px; line-height: 1.5; box-shadow: 0 2px 8px rgba(192, 57, 43, 0.15); }
 .message.error strong { color: #842029; display: block; margin-bottom: 4px; }
 .message.error em { color: #5a3c3c; font-style: italic; font-size: 12px; }
+.message.warning { background: #f5edd7; color: #7a5b1a; border-left: 4px solid #d4a017; padding: 12px 15px; line-height: 1.5; }
 .loading { text-align: center; padding: 15px; color: #5a6b62; font-size: 12px; }
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #d7deca; border-top-color: #293a34; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -122,14 +133,69 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 
 /* ===== ÉDITION DES RÉSERVATIONS ===== */
 .resa-detail-table td { vertical-align: middle; }
-.qte-edit { display: flex; align-items: center; gap: 4px; }
-.qte-edit button { width: 24px; height: 24px; padding: 0; font-size: 14px; font-weight: 700; line-height: 1; }
-.qte-edit input { width: 50px; text-align: center; padding: 3px; font-size: 12px; font-weight: 700; }
+.qte-edit { display: flex; align-items: center; gap: 6px; }
+.qte-edit button { width: 26px; height: 26px; padding: 0; font-size: 15px; font-weight: 700; line-height: 1; }
+.qte-edit .qte-valeur { font-size: 13px; font-weight: 700; min-width: 24px; text-align: center; display: inline-block; }
 .btn-del-line { background: #a12c2c; color: #f5e5e5; width: 24px; height: 24px; padding: 0; font-size: 11px; border-radius: 50%; margin-left: 4px; }
-.ajout-ligne { display: grid; grid-template-columns: 1fr 80px auto; gap: 6px; align-items: center; margin-top: 8px; padding: 8px; background: #f4f5f1; border: 1px dashed #c8cfc0; border-radius: 4px; }
-.ajout-ligne select,
-.ajout-ligne input { padding: 5px 8px; font-size: 12px; }
-.ajout-ligne button { padding: 6px 12px; font-size: 11px; width: auto; }
+.dispo-restante { font-size: 11px; font-weight: 700; }
+.dispo-restante.ok { color: #4a7a4a; }
+.dispo-restante.zero { color: #c0392b; }
+.dispo-restante small { display: block; font-weight: 400; opacity: 0.7; font-size: 10px; }
+
+/* Sélecteur d'articles avec photos */
+.selecteur-articles {
+  margin-top: 10px;
+  padding: 8px;
+  background: #f4f5f1;
+  border: 1px dashed #c8cfc0;
+  border-radius: 4px;
+}
+.selecteur-articles h4 {
+  font-size: 11px;
+  color: #5a6b62;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.selecteur-articles input[type="text"] {
+  margin-bottom: 6px;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+.liste-articles {
+  max-height: 220px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #e2e5dc;
+  border-radius: 4px;
+}
+.article-choix {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #e8ebe4;
+  font-size: 12px;
+  transition: background 0.1s;
+}
+.article-choix:last-child { border-bottom: none; }
+.article-choix:hover { background: #e8f0e0; }
+.article-choix.indispo {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.article-choix.indispo:hover { background: #fce8e8; }
+.article-choix-nom { line-height: 1.3; }
+.article-choix-dispo {
+  font-size: 11px;
+  font-weight: 700;
+  color: #4a7a4a;
+  text-align: right;
+  white-space: nowrap;
+}
+.article-choix-dispo.zero { color: #c0392b; }
 </style>
 </head>
 <body>
@@ -212,6 +278,9 @@ let inventaireCache = [];
 let dispoCache = [];
 let panier = [];
 
+// Modifications en cours par groupe : { groupeId: { articleId: nouvelleQte, ... } }
+let modificationsEnCours = {};
+
 /* ============================================================
    UTILITAIRES
    ============================================================ */
@@ -226,7 +295,7 @@ function afficherMessage(texte, type) {
   const el = document.getElementById('message');
   const txt = (texte === undefined || texte === null) ? "Erreur inconnue" : String(texte);
   el.innerHTML = '<div class="message ' + type + '">' + txt + '</div>';
-  const duree = (type === 'error') ? 15000 : 6000;
+  const duree = (type === 'error' || type === 'warning') ? 12000 : 6000;
   setTimeout(function() { el.innerHTML = ''; }, duree);
   if (type === 'error') window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -332,8 +401,19 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') fermerImage();
 });
 
+function photoThumbHtml(nomImage, size) {
+  size = size || 'md';
+  const classe = size === 'sm' ? 'stock-photo-sm' : 'stock-photo';
+  const classePlaceholder = size === 'sm' ? 'stock-photo-placeholder-sm' : 'stock-photo-placeholder';
+  if (nomImage) {
+    return '<img class="' + classe + '" src="' + escapeHtml(urlPhotoThumb(nomImage)) + '" alt="" loading="lazy" ' +
+           'onerror="this.outerHTML=\'<div class=&quot;' + classePlaceholder + '&quot;>📦</div>\'">';
+  }
+  return '<div class="' + classePlaceholder + '">📦</div>';
+}
+
 /* ============================================================
-   DATES VERROUILLÉES (affichage)
+   DATES VERROUILLÉES
    ============================================================ */
 function afficherDatesVerrouillees() {
   const debut = document.getElementById('dateVerifDebut').value;
@@ -381,7 +461,7 @@ function chargerStock() {
           nouveaux.push(p);
         });
         panier = nouveaux;
-        if (avertissement) afficherMessage('⚠️ Certains articles du panier ont été ajustés suite à la vérification', 'error');
+        if (avertissement) afficherMessage('⚠️ Certains articles du panier ont été ajustés suite à la vérification', 'warning');
         afficherPanier();
       }
     })
@@ -417,13 +497,7 @@ function afficherStock() {
       sousTitre = escapeHtml(item.id) + ' • sur ' + item.total + ' en stock';
     }
 
-    let photoHtml;
-    if (item.nomImage) {
-      photoHtml = '<img class="stock-photo" src="' + escapeHtml(urlPhotoThumb(item.nomImage)) + '" alt="" loading="lazy" ' +
-                  'onerror="this.outerHTML=\'<div class=&quot;stock-photo-placeholder&quot;>📦</div>\'">';
-    } else {
-      photoHtml = '<div class="stock-photo-placeholder">📦</div>';
-    }
+    const photoHtml = photoThumbHtml(item.nomImage, 'md');
 
     let clickAttr = '';
     let titleAttr = '';
@@ -476,7 +550,7 @@ function ajouterAuPanier(id) {
   const existant = panier.find(function(p) { return p.id === id; });
   if (existant) {
     if (existant.quantite >= dispoItem.disponible) {
-      afficherMessage('⚠️ Quantité maximale atteinte pour « ' + escapeHtml(dispoItem.type) + ' » (' + dispoItem.disponible + ')', 'error');
+      afficherMessage('⚠️ Quantité maximale atteinte pour « ' + escapeHtml(dispoItem.type) + ' » (' + dispoItem.disponible + ')', 'warning');
       return;
     }
     existant.quantite++;
@@ -510,23 +584,10 @@ function changerQtePanier(id, delta) {
   const nouvelle = item.quantite + delta;
   if (nouvelle < 1) { retirerDuPanier(id); return; }
   if (nouvelle > item.maxDispo) {
-    afficherMessage('⚠️ Maximum disponible : ' + item.maxDispo + ' pour « ' + escapeHtml(item.type) + ' »', 'error');
+    afficherMessage('⚠️ Maximum disponible : ' + item.maxDispo + ' pour « ' + escapeHtml(item.type) + ' »', 'warning');
     return;
   }
   item.quantite = nouvelle;
-  afficherPanier();
-}
-
-function setQtePanier(id, valeur) {
-  const item = panier.find(function(p) { return p.id === id; });
-  if (!item) return;
-  let v = parseInt(valeur) || 1;
-  if (v < 1) v = 1;
-  if (v > item.maxDispo) {
-    afficherMessage('⚠️ Maximum disponible : ' + item.maxDispo + ' pour « ' + escapeHtml(item.type) + ' »', 'error');
-    v = item.maxDispo;
-  }
-  item.quantite = v;
   afficherPanier();
 }
 
@@ -539,22 +600,13 @@ function afficherPanier() {
 
   let html = '';
   panier.forEach(function(item) {
-    let photoHtml;
-    if (item.nomImage) {
-      photoHtml = '<img src="' + escapeHtml(urlPhotoThumb(item.nomImage)) + '" alt="" ' +
-                  'onerror="this.outerHTML=\'<div class=&quot;stock-photo-placeholder&quot;>📦</div>\'">';
-    } else {
-      photoHtml = '<div class="stock-photo-placeholder">📦</div>';
-    }
-
     html += '<div class="panier-item">';
-    html += photoHtml;
+    html += photoThumbHtml(item.nomImage, 'sm');
     html += '<div class="panier-nom">' + escapeHtml(item.type) +
             '<small>Dispo max : ' + item.maxDispo + '</small></div>';
     html += '<div class="panier-qte">';
     html += '<button onclick="changerQtePanier(\'' + escapeJs(item.id) + '\', -1)">−</button>';
-    html += '<input type="number" min="1" max="' + item.maxDispo + '" value="' + item.quantite + '" ' +
-            'onchange="setQtePanier(\'' + escapeJs(item.id) + '\', this.value)">';
+    html += '<span class="qte-valeur">' + item.quantite + '</span>';
     html += '<button onclick="changerQtePanier(\'' + escapeJs(item.id) + '\', 1)">+</button>';
     html += '</div>';
     html += '<button class="panier-btn-x" onclick="retirerDuPanier(\'' + escapeJs(item.id) + '\')" title="Retirer">✕</button>';
@@ -590,7 +642,7 @@ function rafraichirDispoPourPanier() {
       nouveaux.push(p);
     });
     panier = nouveaux;
-    if (avertissement) afficherMessage('⚠️ Certains articles du panier ont été ajustés ou retirés suite au changement de dates', 'error');
+    if (avertissement) afficherMessage('⚠️ Certains articles du panier ont été ajustés ou retirés suite au changement de dates', 'warning');
     afficherPanier();
   });
 }
@@ -669,7 +721,8 @@ function chargerReservations() {
   el.innerHTML = '<div class="loading"><span class="spinner"></span>Chargement...</div>';
 
   const promises = [];
-  if (inventaireCache.length === 0) promises.push(chargerInventaire());
+  if (inventaireCache.length > 0) promises.push(Promise.resolve());
+  else promises.push(chargerInventaire());
 
   Promise.all(promises).then(function() {
     return appelAPI('reservations', 'GET');
@@ -723,11 +776,19 @@ function afficherReservations() {
 
     const totalArticles = lignes.reduce(function(sum, l) { return sum + l.quantite; }, 0);
 
+    // Total affiché (avec modifications en cours)
+    let totalAffiche = 0;
+    const modsGroupe = modificationsEnCours[g] || {};
+    lignes.forEach(function(l) {
+      const nouvelle = modsGroupe[l.materiel] !== undefined ? modsGroupe[l.materiel] : l.quantite;
+      totalAffiche += nouvelle;
+    });
+
     html += '<tr class="groupe-ligne" id="row-' + g + '" onclick="toggleGroupe(\'' + g + '\')">';
     html += '<td><span class="expand-icon" id="icon-' + g + '">▶</span>';
     html += '<strong>' + escapeHtml(premiere.client) + '</strong>';
     html += ' <span style="color:#5a6b62;font-size:11px;font-weight:normal;">(' + lignes.length + ' article' + (lignes.length > 1 ? 's' : '') + ')</span></td>';
-    html += '<td>' + totalArticles + '</td><td>' + premiere.debut + '</td><td>' + premiere.fin + '</td>';
+    html += '<td>' + totalAffiche + '</td><td>' + premiere.debut + '</td><td>' + premiere.fin + '</td>';
     html += '<td><span class="badge ' + badgeClass + '">' + escapeHtml(premiere.statut) + '</span></td>';
     html += '<td class="actions">';
     if (premiere.statut === 'Réservé') {
@@ -744,7 +805,8 @@ function afficherReservations() {
     html += '<table class="resa-detail-table"><thead><tr>' +
             '<th style="width:50px;">Photo</th>' +
             '<th>Article</th>' +
-            '<th style="width:160px;">Quantité</th>' +
+            '<th style="width:130px;">Quantité</th>' +
+            '<th style="width:120px;">Stock dispo</th>' +
             (modifiable ? '<th style="width:40px;"></th>' : '') +
             '</tr></thead><tbody>';
 
@@ -752,30 +814,46 @@ function afficherReservations() {
       const designation = typeParId[l.materiel] || l.materiel;
       const nomImg = imageParId[l.materiel];
 
-      let photoCell;
-      if (nomImg) {
-        photoCell = '<img class="stock-photo" src="' + escapeHtml(urlPhotoThumb(nomImg)) + '" alt="" loading="lazy" ' +
-                    'style="cursor:zoom-in;" ' +
-                    'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(nomImg) + '\', \'' + escapeJs(designation) + '\')" ' +
-                    'onerror="this.outerHTML=\'<div class=&quot;stock-photo-placeholder&quot;>📦</div>\'">';
-      } else {
-        photoCell = '<div class="stock-photo-placeholder">📦</div>';
-      }
+      // Quantité affichée = valeur en cours de modification OU valeur d'origine
+      const nouvelleQte = modsGroupe[l.materiel] !== undefined ? modsGroupe[l.materiel] : l.quantite;
+      const estModifie = modsGroupe[l.materiel] !== undefined && modsGroupe[l.materiel] !== l.quantite;
+
+      // Calcul de la dispo restante pour cet article sur la période de la réservation
+      const dispoInfo = calculerDispoRestante(l.materiel, premiere.debut, premiere.fin, g);
+      const maxAutorise = dispoInfo !== null ? dispoInfo + l.quantite : l.quantite;
+
+      let photoCell = '<span style="cursor:zoom-in;" ' +
+        (nomImg ? 'onclick="event.stopPropagation();afficherImage(\'' + escapeJs(nomImg) + '\', \'' + escapeJs(designation) + '\')"' : '') +
+        '>' + photoThumbHtml(nomImg, 'md') + '</span>';
 
       let qteCell;
       if (modifiable) {
         qteCell = '<div class="qte-edit">' +
           '<button onclick="event.stopPropagation();modifierQteResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\', -1)">−</button>' +
-          '<input type="number" min="1" value="' + l.quantite + '" ' +
-          'onclick="event.stopPropagation()" ' +
-          'onchange="event.stopPropagation();setQteResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\', this.value)">' +
+          '<span class="qte-valeur">' + nouvelleQte + '</span>' +
           '<button onclick="event.stopPropagation();modifierQteResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\', 1)">+</button>' +
           '</div>';
       } else {
-        qteCell = l.quantite;
+        qteCell = nouvelleQte;
       }
 
-      html += '<tr><td>' + photoCell + '</td><td>' + escapeHtml(designation) + '</td><td>' + qteCell + '</td>';
+      // Cellule dispo
+      let dispoCell;
+      if (dispoInfo === null) {
+        dispoCell = '<span class="dispo-restante">—</span>';
+      } else {
+        const classe = dispoInfo === 0 ? 'zero' : 'ok';
+        dispoCell = '<span class="dispo-restante ' + classe + '">' + dispoInfo +
+                    '<small>sur ' + (dispoInfo + l.quantite) + ' libres</small></span>';
+      }
+
+      html += '<tr>';
+      html += '<td>' + photoCell + '</td>';
+      html += '<td>' + escapeHtml(designation);
+      if (estModifie) html += ' <span style="color:#d4a017;font-size:10px;">● modifié</span>';
+      html += '</td>';
+      html += '<td>' + qteCell + '</td>';
+      html += '<td>' + dispoCell + '</td>';
       if (modifiable) {
         html += '<td><button class="btn-del-line" title="Retirer cet article" ' +
                 'onclick="event.stopPropagation();supprimerLigneResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\')">✕</button></td>';
@@ -785,18 +863,32 @@ function afficherReservations() {
 
     html += '</tbody></table>';
 
-    if (modifiable) {
-      html += '<div class="ajout-ligne" id="ajout-' + g + '">';
-      html += '<select id="sel-add-' + g + '">';
-      html += '<option value="">-- Ajouter un article --</option>';
-      inventaireCache.forEach(function(item) {
-        if (item.invalide) return;
-        html += '<option value="' + escapeHtml(item.id) + '">' + escapeHtml(item.type) + '</option>';
-      });
-      html += '</select>';
-      html += '<input type="number" id="qte-add-' + g + '" min="1" value="1" placeholder="Qté">';
-      html += '<button onclick="event.stopPropagation();ajouterLigneResa(\'' + escapeJs(g) + '\')">+ Ajouter</button>';
+    // Bouton de validation (visible si modifs en cours)
+    const aDesModifs = Object.keys(modsGroupe).some(function(aid) {
+      const originale = lignes.find(function(l) { return l.materiel === aid; });
+      return !originale || originale.quantite !== modsGroupe[aid];
+    });
+
+    if (modifiable && aDesModifs) {
+      html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;">';
+      html += '<button class="btn-valider" onclick="event.stopPropagation();validerModifications(\'' + escapeJs(g) + '\')">💾 Valider les modifications</button>';
+      html += '<button class="small" style="background:#a8b0a5;color:white;width:auto;padding:6px 12px;" onclick="event.stopPropagation();annulerModifications(\'' + escapeJs(g) + '\')">Annuler</button>';
       html += '</div>';
+    }
+
+    // Sélecteur d'articles avec photos (si modifiable)
+    if (modifiable) {
+      html += '<div class="selecteur-articles" id="sel-' + g + '" style="display:none;">';
+      html += '<h4>➕ Ajouter un article</h4>';
+      html += '<input type="text" placeholder="🔍 Rechercher..." oninput="filtrerArticlesSelecteur(\'' + escapeJs(g) + '\', this.value)" onclick="event.stopPropagation()">';
+      html += '<div class="liste-articles" id="liste-' + g + '">';
+      html += construireListeArticles(g, premiere.debut, premiere.fin);
+      html += '</div>';
+      html += '<div style="margin-top:8px;text-align:right;">';
+      html += '<button class="small" style="background:#a8b0a5;color:white;width:auto;padding:6px 12px;" onclick="event.stopPropagation();fermerSelecteur(\'' + escapeJs(g) + '\')">Fermer</button>';
+      html += '</div>';
+      html += '</div>';
+      html += '<button class="small success" style="width:auto;padding:6px 12px;margin-top:8px;" onclick="event.stopPropagation();ouvrirSelecteur(\'' + escapeJs(g) + '\')">➕ Ajouter un article</button>';
     }
 
     html += '</td></tr>';
@@ -807,43 +899,82 @@ function afficherReservations() {
   el.innerHTML = html;
 }
 
-function toggleGroupe(g) {
-  const det = document.getElementById('det-' + g);
-  const icon = document.getElementById('icon-' + g);
-  const row = document.getElementById('row-' + g);
-  if (det) det.classList.toggle('open');
-  if (icon) icon.classList.toggle('open');
-  if (row) row.classList.toggle('ouvert');
+/* ============================================================
+   CALCUL DE LA DISPO RESTANTE (hors groupe en cours)
+   ============================================================ */
+function calculerDispoRestante(articleId, debut, fin, groupeExclu) {
+  // On utilise la même logique que le serveur : on parcourt reservationsCache
+  const inventaire = inventaireCache.find(function(i) { return i.id === articleId; });
+  if (!inventaire || inventaire.invalide) return null;
+
+  const aujourdhuiStr = aujourdhui();
+  let bloque = 0;
+
+  reservationsCache.forEach(function(r) {
+    if (groupeExclu && r.groupe === groupeExclu) return;
+    const estActif = (r.statut === "Réservé" || r.statut === "Confirmé");
+    const estPassee = r.fin < aujourdhuiStr;
+    if (r.materiel === articleId && estActif && !estPassee) {
+      if (r.debut <= fin && r.fin >= debut) {
+        bloque += r.quantite;
+      }
+    }
+  });
+
+  return Math.max(0, inventaire.total - bloque);
 }
 
 /* ============================================================
-   ÉDITION D'UNE RÉSERVATION EXISTANTE
+   SÉLECTEUR D'ARTICLES (avec photos + dispo)
    ============================================================ */
-function _trouverResa(groupe, articleId) {
-  return reservationsCache.find(function(r) {
-    return r.groupe === groupe && r.materiel === articleId;
+function construireListeArticles(groupe, debut, fin) {
+  let html = '';
+  inventaireCache.forEach(function(item) {
+    if (item.invalide) return;
+
+    const dispo = calculerDispoRestante(item.id, debut, fin, groupe);
+    if (dispo === null || dispo <= 0) return; // on n'affiche pas les articles indispo
+
+    html += '<div class="article-choix" data-nom="' + escapeHtml(item.type.toLowerCase()) + '" ' +
+            'onclick="event.stopPropagation();ajouterArticleDepuisSelecteur(\'' + escapeJs(groupe) + '\', \'' + escapeJs(item.id) + '\')">';
+    html += photoThumbHtml(item.nomImage, 'sm');
+    html += '<div class="article-choix-nom">' + escapeHtml(item.type) + '</div>';
+    html += '<div class="article-choix-dispo">' + dispo + ' dispo</div>';
+    html += '</div>';
+  });
+
+  if (!html) html = '<div style="padding:12px;text-align:center;color:#8a9490;font-size:12px;">Aucun article disponible sur cette période</div>';
+  return html;
+}
+
+function filtrerArticlesSelecteur(groupe, texte) {
+  const filtre = (texte || '').toLowerCase();
+  const items = document.querySelectorAll('#liste-' + groupe + ' .article-choix');
+  items.forEach(function(el) {
+    const nom = el.getAttribute('data-nom') || '';
+    el.style.display = nom.indexOf(filtre) !== -1 ? '' : 'none';
   });
 }
 
-function ajouterLigneResa(groupe) {
-  const sel = document.getElementById('sel-add-' + groupe);
-  const qteInput = document.getElementById('qte-add-' + groupe);
-  const articleId = sel.value;
-  const quantite = parseInt(qteInput.value) || 0;
+function ouvrirSelecteur(groupe) {
+  const el = document.getElementById('sel-' + groupe);
+  if (el) el.style.display = 'block';
+  // Cacher le bouton d'ouverture
+  const btn = event && event.target;
+  if (btn && btn.tagName === 'BUTTON') btn.style.display = 'none';
+}
 
-  if (!articleId || quantite < 1) {
-    afficherMessage('Sélectionnez un article et une quantité valide', 'error');
-    return;
-  }
+function fermerSelecteur(groupe) {
+  const el = document.getElementById('sel-' + groupe);
+  if (el) el.style.display = 'none';
+}
 
-  sel.disabled = true;
-  qteInput.disabled = true;
-
+function ajouterArticleDepuisSelecteur(groupe, articleId) {
   appelAPI('ajouterArticleGroupe', 'POST', {
     action: 'ajouterArticleGroupe',
     groupe: groupe,
     articleId: articleId,
-    quantite: quantite
+    quantite: 1
   }).then(function(res) {
     if (res && res.succes) {
       afficherMessage('✅ ' + escapeHtml(res.message), 'success');
@@ -851,56 +982,135 @@ function ajouterLigneResa(groupe) {
       chargerStock();
     } else {
       afficherMessage('❌ ' + escapeHtml((res && res.message) || 'Erreur'), 'error');
-      sel.disabled = false;
-      qteInput.disabled = false;
     }
   }).catch(function(err) {
     afficherMessage('❌ ' + escapeHtml(err.message), 'error');
-    sel.disabled = false;
-    qteInput.disabled = false;
   });
 }
 
+/* ============================================================
+   MODIFICATIONS EN COURS (buffer)
+   ============================================================ */
 function modifierQteResa(groupe, articleId, delta) {
-  const ligne = _trouverResa(groupe, articleId);
+  const ligne = reservationsCache.find(function(r) {
+    return r.groupe === groupe && r.materiel === articleId;
+  });
   if (!ligne) return;
-  const nouvelle = ligne.quantite + delta;
+
+  if (!modificationsEnCours[groupe]) modificationsEnCours[groupe] = {};
+  const actuelles = modificationsEnCours[groupe];
+
+  const qteActuelle = actuelles[articleId] !== undefined ? actuelles[articleId] : ligne.quantite;
+  const nouvelle = qteActuelle + delta;
+
   if (nouvelle < 1) {
-    supprimerLigneResa(groupe, articleId);
+    // Retour à 0 = on propose la suppression
+    if (confirm('Mettre la quantité à 0 supprime cet article. Confirmer ?')) {
+      supprimerLigneResa(groupe, articleId);
+    }
     return;
   }
-  setQteResa(groupe, articleId, nouvelle);
+
+  // Vérifier la dispo max
+  const dispo = calculerDispoRestante(articleId, ligne.debut, ligne.fin, groupe);
+  if (dispo === null) {
+    afficherMessage('❌ Impossible de calculer la disponibilité', 'error');
+    return;
+  }
+  const maxAutorise = dispo + ligne.quantite;
+  if (nouvelle > maxAutorise) {
+    afficherMessage('⚠️ Maximum disponible : ' + maxAutorise + ' sur la période (' +
+                    dispo + ' libres + ' + ligne.quantite + ' déjà réservés)', 'warning');
+    return;
+  }
+
+  if (nouvelle === ligne.quantite) {
+    delete actuelles[articleId];
+  } else {
+    actuelles[articleId] = nouvelle;
+  }
+
+  if (Object.keys(actuelles).length === 0) delete modificationsEnCours[groupe];
+
+  afficherReservations();
+  // Rouvrir le détail du groupe
+  setTimeout(function() {
+    const det = document.getElementById('det-' + groupe);
+    const icon = document.getElementById('icon-' + groupe);
+    const row = document.getElementById('row-' + groupe);
+    if (det) det.classList.add('open');
+    if (icon) icon.classList.add('open');
+    if (row) row.classList.add('ouvert');
+  }, 10);
 }
 
-function setQteResa(groupe, articleId, valeur) {
-  const nouvelle = parseInt(valeur) || 0;
-  if (nouvelle < 1) {
-    supprimerLigneResa(groupe, articleId);
-    return;
-  }
+function validerModifications(groupe) {
+  const mods = modificationsEnCours[groupe];
+  if (!mods || Object.keys(mods).length === 0) return;
 
-  appelAPI('modifierArticleGroupe', 'POST', {
-    action: 'modifierArticleGroupe',
-    groupe: groupe,
-    articleId: articleId,
-    quantite: nouvelle
-  }).then(function(res) {
-    if (res && res.succes) {
-      afficherMessage('✅ ' + escapeHtml(res.message), 'success');
+  if (!confirm('Valider les modifications de cette réservation ?\n\nLe statut ne sera pas modifié.')) return;
+
+  const btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement...'; }
+
+  // Envoi en série des modifications
+  const articleIds = Object.keys(mods);
+  let index = 0;
+  let erreur = null;
+
+  function suivant() {
+    if (index >= articleIds.length) {
+      if (erreur) {
+        afficherMessage('❌ ' + escapeHtml(erreur), 'error');
+      } else {
+        afficherMessage('✅ ' + articleIds.length + ' modification(s) enregistrée(s)', 'success');
+        delete modificationsEnCours[groupe];
+      }
       chargerReservations();
       chargerStock();
-    } else {
-      afficherMessage('❌ ' + escapeHtml((res && res.message) || 'Erreur'), 'error');
-      chargerReservations();
+      return;
     }
-  }).catch(function(err) {
-    afficherMessage('❌ ' + escapeHtml(err.message), 'error');
-    chargerReservations();
-  });
+
+    const articleId = articleIds[index];
+    const nouvelleQte = mods[articleId];
+    index++;
+
+    appelAPI('modifierArticleGroupe', 'POST', {
+      action: 'modifierArticleGroupe',
+      groupe: groupe,
+      articleId: articleId,
+      quantite: nouvelleQte
+    }).then(function(res) {
+      if (!res || !res.succes) {
+        erreur = (res && res.message) || 'Erreur sur « ' + articleId + ' »';
+      }
+      suivant();
+    }).catch(function(err) {
+      erreur = err.message;
+      suivant();
+    });
+  }
+
+  suivant();
+}
+
+function annulerModifications(groupe) {
+  delete modificationsEnCours[groupe];
+  afficherReservations();
+  setTimeout(function() {
+    const det = document.getElementById('det-' + groupe);
+    const icon = document.getElementById('icon-' + groupe);
+    const row = document.getElementById('row-' + groupe);
+    if (det) det.classList.add('open');
+    if (icon) icon.classList.add('open');
+    if (row) row.classList.add('ouvert');
+  }, 10);
 }
 
 function supprimerLigneResa(groupe, articleId) {
-  const ligne = _trouverResa(groupe, articleId);
+  const ligne = reservationsCache.find(function(r) {
+    return r.groupe === groupe && r.materiel === articleId;
+  });
   const libelle = ligne ? (inventaireCache.find(function(i) { return i.id === articleId; }) || {}).type : articleId;
   if (!confirm('Retirer « ' + (libelle || articleId) + ' » de cette réservation ?\n\nCette action est immédiate.')) return;
 
@@ -911,6 +1121,10 @@ function supprimerLigneResa(groupe, articleId) {
   }).then(function(res) {
     if (res && res.succes) {
       afficherMessage('✅ ' + escapeHtml(res.message), 'success');
+      if (modificationsEnCours[groupe]) {
+        delete modificationsEnCours[groupe][articleId];
+        if (Object.keys(modificationsEnCours[groupe]).length === 0) delete modificationsEnCours[groupe];
+      }
       chargerReservations();
       chargerStock();
     } else {
@@ -922,8 +1136,17 @@ function supprimerLigneResa(groupe, articleId) {
 }
 
 /* ============================================================
-   CHANGEMENT DE STATUT
+   TOGGLE + STATUT
    ============================================================ */
+function toggleGroupe(g) {
+  const det = document.getElementById('det-' + g);
+  const icon = document.getElementById('icon-' + g);
+  const row = document.getElementById('row-' + g);
+  if (det) det.classList.toggle('open');
+  if (icon) icon.classList.toggle('open');
+  if (row) row.classList.toggle('ouvert');
+}
+
 function changerStatutGroupe(groupe, statut) {
   let message;
   if (statut === 'Annulé') {
@@ -937,6 +1160,7 @@ function changerStatutGroupe(groupe, statut) {
     .then(function(res) {
       if (res && res.succes) {
         afficherMessage('✅ ' + escapeHtml(res.message), 'success');
+        delete modificationsEnCours[groupe];
         chargerReservations();
         chargerStock();
       } else {
