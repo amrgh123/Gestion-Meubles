@@ -119,6 +119,17 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
 .image-modal-close:hover { transform: scale(1.15); }
 .image-modal-titre { margin-top: 14px; color: #d7deca; font-size: 13px; text-align: center; max-width: 80vw; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ===== ÉDITION DES RÉSERVATIONS ===== */
+.resa-detail-table td { vertical-align: middle; }
+.qte-edit { display: flex; align-items: center; gap: 4px; }
+.qte-edit button { width: 24px; height: 24px; padding: 0; font-size: 14px; font-weight: 700; line-height: 1; }
+.qte-edit input { width: 50px; text-align: center; padding: 3px; font-size: 12px; font-weight: 700; }
+.btn-del-line { background: #a12c2c; color: #f5e5e5; width: 24px; height: 24px; padding: 0; font-size: 11px; border-radius: 50%; margin-left: 4px; }
+.ajout-ligne { display: grid; grid-template-columns: 1fr 80px auto; gap: 6px; align-items: center; margin-top: 8px; padding: 8px; background: #f4f5f1; border: 1px dashed #c8cfc0; border-radius: 4px; }
+.ajout-ligne select,
+.ajout-ligne input { padding: 5px 8px; font-size: 12px; }
+.ajout-ligne button { padding: 6px 12px; font-size: 11px; width: auto; }
 </style>
 </head>
 <body>
@@ -174,7 +185,7 @@ tr.details-ligne tr:first-child th { font-weight: 700; color: #293a34; font-size
   <h2>📋 Réservations
     <button class="small" onclick="chargerReservations()" style="margin-left:8px;">🔄 Rafraîchir</button>
   </h2>
-  <div class="legende">Cliquez sur une ligne pour afficher le détail des articles</div>
+  <div class="legende">Cliquez sur une ligne pour afficher le détail et modifier les articles</div>
   <input type="text" class="filtre" id="filtreClient" placeholder="Filtrer par client..." oninput="afficherReservations()">
   <div id="tableReservations" class="loading"><span class="spinner"></span>Chargement...</div>
 </div>
@@ -340,7 +351,7 @@ function afficherDatesVerrouillees() {
 }
 
 /* ============================================================
-   STOCK — affichage avec clic → panier
+   STOCK
    ============================================================ */
 function chargerStock() {
   const debut = document.getElementById('dateVerifDebut').value || aujourdhui();
@@ -354,7 +365,6 @@ function chargerStock() {
       afficherStock();
       afficherDatesVerrouillees();
 
-      // Réajuste le panier selon la nouvelle dispo
       if (panier.length > 0) {
         const nouvelleDispo = {};
         data.forEach(function(d) { nouvelleDispo[d.id] = d; });
@@ -554,7 +564,6 @@ function afficherPanier() {
 }
 
 function rafraichirDispoPourPanier() {
-  // Récupère les dates du bloc "Stock" (source unique de vérité)
   const debut = document.getElementById('dateVerifDebut').value;
   const fin = document.getElementById('dateVerifFin').value;
 
@@ -706,6 +715,8 @@ function afficherReservations() {
     const premiere = lignes[0];
     count++;
 
+    const modifiable = (premiere.statut === 'Réservé' || premiere.statut === 'Confirmé');
+
     let badgeClass = 'reserve';
     if (premiere.statut === 'Confirmé') badgeClass = 'confirme';
     else if (premiere.statut === 'Terminé') badgeClass = 'termine';
@@ -730,10 +741,17 @@ function afficherReservations() {
     html += '</td></tr>';
 
     html += '<tr class="details-ligne" id="det-' + g + '"><td colspan="6">';
-    html += '<table><thead><tr><th style="width:50px;">Photo</th><th>Article</th><th>Quantité</th></tr></thead><tbody>';
+    html += '<table class="resa-detail-table"><thead><tr>' +
+            '<th style="width:50px;">Photo</th>' +
+            '<th>Article</th>' +
+            '<th style="width:160px;">Quantité</th>' +
+            (modifiable ? '<th style="width:40px;"></th>' : '') +
+            '</tr></thead><tbody>';
+
     lignes.forEach(function(l) {
       const designation = typeParId[l.materiel] || l.materiel;
       const nomImg = imageParId[l.materiel];
+
       let photoCell;
       if (nomImg) {
         photoCell = '<img class="stock-photo" src="' + escapeHtml(urlPhotoThumb(nomImg)) + '" alt="" loading="lazy" ' +
@@ -743,9 +761,45 @@ function afficherReservations() {
       } else {
         photoCell = '<div class="stock-photo-placeholder">📦</div>';
       }
-      html += '<tr><td>' + photoCell + '</td><td>' + escapeHtml(designation) + '</td><td>' + l.quantite + '</td></tr>';
+
+      let qteCell;
+      if (modifiable) {
+        qteCell = '<div class="qte-edit">' +
+          '<button onclick="event.stopPropagation();modifierQteResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\', -1)">−</button>' +
+          '<input type="number" min="1" value="' + l.quantite + '" ' +
+          'onclick="event.stopPropagation()" ' +
+          'onchange="event.stopPropagation();setQteResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\', this.value)">' +
+          '<button onclick="event.stopPropagation();modifierQteResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\', 1)">+</button>' +
+          '</div>';
+      } else {
+        qteCell = l.quantite;
+      }
+
+      html += '<tr><td>' + photoCell + '</td><td>' + escapeHtml(designation) + '</td><td>' + qteCell + '</td>';
+      if (modifiable) {
+        html += '<td><button class="btn-del-line" title="Retirer cet article" ' +
+                'onclick="event.stopPropagation();supprimerLigneResa(\'' + escapeJs(g) + '\', \'' + escapeJs(l.materiel) + '\')">✕</button></td>';
+      }
+      html += '</tr>';
     });
-    html += '</tbody></table></td></tr>';
+
+    html += '</tbody></table>';
+
+    if (modifiable) {
+      html += '<div class="ajout-ligne" id="ajout-' + g + '">';
+      html += '<select id="sel-add-' + g + '">';
+      html += '<option value="">-- Ajouter un article --</option>';
+      inventaireCache.forEach(function(item) {
+        if (item.invalide) return;
+        html += '<option value="' + escapeHtml(item.id) + '">' + escapeHtml(item.type) + '</option>';
+      });
+      html += '</select>';
+      html += '<input type="number" id="qte-add-' + g + '" min="1" value="1" placeholder="Qté">';
+      html += '<button onclick="event.stopPropagation();ajouterLigneResa(\'' + escapeJs(g) + '\')">+ Ajouter</button>';
+      html += '</div>';
+    }
+
+    html += '</td></tr>';
   });
 
   if (count === 0) html += '<tr><td colspan="6" class="empty">Aucune réservation</td></tr>';
@@ -762,6 +816,114 @@ function toggleGroupe(g) {
   if (row) row.classList.toggle('ouvert');
 }
 
+/* ============================================================
+   ÉDITION D'UNE RÉSERVATION EXISTANTE
+   ============================================================ */
+function _trouverResa(groupe, articleId) {
+  return reservationsCache.find(function(r) {
+    return r.groupe === groupe && r.materiel === articleId;
+  });
+}
+
+function ajouterLigneResa(groupe) {
+  const sel = document.getElementById('sel-add-' + groupe);
+  const qteInput = document.getElementById('qte-add-' + groupe);
+  const articleId = sel.value;
+  const quantite = parseInt(qteInput.value) || 0;
+
+  if (!articleId || quantite < 1) {
+    afficherMessage('Sélectionnez un article et une quantité valide', 'error');
+    return;
+  }
+
+  sel.disabled = true;
+  qteInput.disabled = true;
+
+  appelAPI('ajouterArticleGroupe', 'POST', {
+    action: 'ajouterArticleGroupe',
+    groupe: groupe,
+    articleId: articleId,
+    quantite: quantite
+  }).then(function(res) {
+    if (res && res.succes) {
+      afficherMessage('✅ ' + escapeHtml(res.message), 'success');
+      chargerReservations();
+      chargerStock();
+    } else {
+      afficherMessage('❌ ' + escapeHtml((res && res.message) || 'Erreur'), 'error');
+      sel.disabled = false;
+      qteInput.disabled = false;
+    }
+  }).catch(function(err) {
+    afficherMessage('❌ ' + escapeHtml(err.message), 'error');
+    sel.disabled = false;
+    qteInput.disabled = false;
+  });
+}
+
+function modifierQteResa(groupe, articleId, delta) {
+  const ligne = _trouverResa(groupe, articleId);
+  if (!ligne) return;
+  const nouvelle = ligne.quantite + delta;
+  if (nouvelle < 1) {
+    supprimerLigneResa(groupe, articleId);
+    return;
+  }
+  setQteResa(groupe, articleId, nouvelle);
+}
+
+function setQteResa(groupe, articleId, valeur) {
+  const nouvelle = parseInt(valeur) || 0;
+  if (nouvelle < 1) {
+    supprimerLigneResa(groupe, articleId);
+    return;
+  }
+
+  appelAPI('modifierArticleGroupe', 'POST', {
+    action: 'modifierArticleGroupe',
+    groupe: groupe,
+    articleId: articleId,
+    quantite: nouvelle
+  }).then(function(res) {
+    if (res && res.succes) {
+      afficherMessage('✅ ' + escapeHtml(res.message), 'success');
+      chargerReservations();
+      chargerStock();
+    } else {
+      afficherMessage('❌ ' + escapeHtml((res && res.message) || 'Erreur'), 'error');
+      chargerReservations();
+    }
+  }).catch(function(err) {
+    afficherMessage('❌ ' + escapeHtml(err.message), 'error');
+    chargerReservations();
+  });
+}
+
+function supprimerLigneResa(groupe, articleId) {
+  const ligne = _trouverResa(groupe, articleId);
+  const libelle = ligne ? (inventaireCache.find(function(i) { return i.id === articleId; }) || {}).type : articleId;
+  if (!confirm('Retirer « ' + (libelle || articleId) + ' » de cette réservation ?\n\nCette action est immédiate.')) return;
+
+  appelAPI('supprimerArticleGroupe', 'POST', {
+    action: 'supprimerArticleGroupe',
+    groupe: groupe,
+    articleId: articleId
+  }).then(function(res) {
+    if (res && res.succes) {
+      afficherMessage('✅ ' + escapeHtml(res.message), 'success');
+      chargerReservations();
+      chargerStock();
+    } else {
+      afficherMessage('❌ ' + escapeHtml((res && res.message) || 'Erreur'), 'error');
+    }
+  }).catch(function(err) {
+    afficherMessage('❌ ' + escapeHtml(err.message), 'error');
+  });
+}
+
+/* ============================================================
+   CHANGEMENT DE STATUT
+   ============================================================ */
 function changerStatutGroupe(groupe, statut) {
   let message;
   if (statut === 'Annulé') {
